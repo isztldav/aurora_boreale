@@ -13,7 +13,7 @@ from typing import Optional
 import numpy as np
 import torch
 from torch import nn
-from torch.optim import Adam
+from torch.optim import Adam, AdamW
 from torch.utils.tensorboard import SummaryWriter
 from transformers import get_cosine_schedule_with_warmup
 
@@ -94,7 +94,14 @@ def run_experiment(cfg: TrainConfig) -> str:
         freeze_backbone=cfg.freeze_backbone,
     ).to(device)
 
-    optimizer = Adam(model.parameters(), lr=cfg.lr)
+    opt_name = getattr(cfg, "optimizer", "adam").lower()
+    if opt_name == "adamw":
+        optimizer = AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
+    elif opt_name == "adam":
+        optimizer = Adam(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
+    else:
+        raise ValueError(f"Unsupported optimizer '{cfg.optimizer}'. Use 'adam' or 'adamw'.")
+    
     num_training_steps = cfg.epochs * math.ceil(len(train_loader))
     scheduler = get_cosine_schedule_with_warmup(
         optimizer,

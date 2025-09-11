@@ -13,6 +13,8 @@ class TrainConfig:
     prefetch_factor:int = 4
     persistent_workers:bool = False
     epochs: int = 10
+    # Optimizer
+    optimizer: str = "adam"  # one of: "adam", "adamw"
     lr: float = 1e-3
     weight_decay: float = 0.05
     warmup_ratio: float = 0.05
@@ -64,6 +66,5 @@ def save_train_config(cfg: TrainConfig, path: str) -> str:
         f.write("\n")
     os.replace(tmp_path, path)  # atomic on POSIX/NT
     return path
-
 
 
