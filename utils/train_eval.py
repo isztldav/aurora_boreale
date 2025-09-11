@@ -21,7 +21,7 @@ from utils.cuda_helper import CUDAPrefetchLoader
 
 
 def train_one_epoch(
-    dataloader: Iterable,
+    dataloader: Tuple[DataLoader, CUDAPrefetchLoader],
     model: torch.nn.Module,
     loss_fn: nn.Module,
     optimizer: Optimizer,
@@ -32,6 +32,7 @@ def train_one_epoch(
     tb_writer: Optional[SummaryWriter] = None,
     global_step_start: int = 0,
     max_grad_norm: Optional[float] = None,
+    grad_accum_steps: int = 1,
 )-> Dict[str, float]:
     """Train one full epoch.
 
@@ -46,28 +47,30 @@ def train_one_epoch(
     global_step = global_step_start
 
     progress_bar = tqdm(dataloader, total=len(dataloader), desc="Processing", unit="batch", leave=True)
+    optimizer.zero_grad(set_to_none=True)
     for batch_idx, (input, expected) in enumerate(progress_bar):
         input = input.to(device, non_blocking=True)
         expected = expected.to(device, non_blocking=True)
 
-        optimizer.zero_grad(set_to_none=True)
         with torch.autocast(device_type="cuda", enabled=torch.cuda.is_available()):
             logits = model(input).logits
             loss = loss_fn(logits, expected)
         
+        loss_to_backprop = loss / max(1, grad_accum_steps)
         prev_scale = scaler.get_scale()
+        scaler.scale(loss_to_backprop).backward()
 
-        scaler.scale(loss).backward()
+        do_step = ((batch_idx + 1) % max(1, grad_accum_steps) == 0) or ((batch_idx + 1) == len(dataloader))
+        if do_step:
+            # Gradient clipping (after unscale) to improve stability
+            if max_grad_norm is not None and max_grad_norm > 0:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
 
-        # Gradient clipping (after unscale) to improve stability, esp. for scratch Swin
-        if max_grad_norm is not None and max_grad_norm > 0:
-            scaler.unscale_(optimizer)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad(set_to_none=True)
 
-        scaler.step(optimizer)
-        scaler.update()
-        
-        if scheduler:
             if scheduler and scaler.get_scale() >= prev_scale:
                 scheduler.step()
         
@@ -105,7 +108,7 @@ def train_one_epoch(
 
 @torch.no_grad()
 def evaluate(
-    dataloader: Iterable,
+    dataloader: Tuple[DataLoader, CUDAPrefetchLoader],
     model,
     loss_fn: nn.Module,
     device: torch.device,
@@ -157,9 +160,10 @@ def evaluate(
         auroc_macro.update(probs, y)
         cm_metric.update(logits, y)
         roc_micro.update(probs, y)
-        cohenkappa.update(probs, y)
-        recall_micro.update(probs, y)
-        recall_macro.update(probs, y)
+        preds_eval = torch.argmax(logits, dim=1)
+        cohenkappa.update(preds_eval, y)
+        recall_micro.update(preds_eval, y)
+        recall_macro.update(preds_eval, y)
     
     progress_bar.clear()
     progress_bar.close()

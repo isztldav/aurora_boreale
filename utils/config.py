@@ -29,7 +29,7 @@ class TrainConfig:
     # Logging
     run_name: Optional[str] = None
     tb_root: str = "runs"
-    eval_topk: Tuple[int, ...] = (3, 5),
+    eval_topk: Tuple[int, ...] = (3, 5)
     model_suffix: str = ''
     
     # Checkpoints
@@ -67,4 +67,3 @@ def save_train_config(cfg: TrainConfig, path: str) -> str:
         f.write("\n")
     os.replace(tmp_path, path)  # atomic on POSIX/NT
     return path
-

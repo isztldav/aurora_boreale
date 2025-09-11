@@ -44,7 +44,7 @@ def build_dataloaders(
 
     val_dataset   = datasets.ImageFolder(val_p,   transform=eval_tfms)
 
-    test_dataset  = datasets.ImageFolder(test_p,  transform=eval_tfms) if os.path.isdir(val_p) else None
+    test_dataset  = datasets.ImageFolder(test_p,  transform=eval_tfms) if os.path.isdir(test_p) else None
 
     train_loader = DataLoader(train_dataset, batch_size=cfg.batch_size, shuffle=True,
                               num_workers=cfg.num_workers, pin_memory=True, collate_fn=collate_fn, prefetch_factor=cfg.prefetch_factor, persistent_workers=cfg.persistent_workers)

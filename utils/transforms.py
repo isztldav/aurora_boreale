@@ -73,22 +73,10 @@ class ProcessorTransform:
 def build_transforms(model_flavour: str) -> Tuple[transforms.Compose, transforms.Compose]:
     """Return train/eval transforms compatible with ``model_flavour``."""
     train_tfms = transforms.Compose([
-        #transforms.Lambda(lambda x: x.to(torch.float) / 255.0),
-        #transforms.RandomRotation(20, fill=0),
-        #RandomBlackSpots(fill=0, p=0.85),
-        #transforms.Lambda(lambda x: torch.clamp(x * 255.0, 0, 1)),
-
         ProcessorTransform(model_flavour),
-        #RandomBlackSpots(processor_name=model_flavour, fill=0, p=0.85),
-        #RandomRotation(processor_name=model_flavour, degrees=20),
-        #RandomNoise(mean=0., std=0.18, p=1.0),
-        #transforms.RandomHorizontalFlip(),
-        #transforms.RandomVerticalFlip(),
-
-        #transforms.RandomRotation(20, fill=-1),
-        #RandomNoise(mean=0.05, std=0.18, p=0.85),
-        #RandomBlackSpots(black_value=-1, p=0.85),
-        #transforms.Lambda(lambda x: torch.clamp(x, -1, 1)),
+        # Light augmentations in normalized tensor space
+        transforms.RandomHorizontalFlip(p=0.5),
+        RandomRotation(processor_name=model_flavour, degrees=10),
     ])
     eval_tfms = transforms.Compose([
         #transforms.Lambda(lambda x: x.to(torch.float) / 255.0),

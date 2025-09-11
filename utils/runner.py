@@ -100,7 +100,8 @@ def run_experiment(cfg: TrainConfig) -> str:
         for name, param in module.named_parameters():
             if not param.requires_grad:
                 continue
-            if name.endswith("bias") or "norm" in name.lower() or "layernorm" in name.lower():
+            # Do not apply weight decay on bias, LayerNorm/Norms, or 1D parameters
+            if name.endswith("bias") or param.ndim == 1 or "norm" in name.lower() or "layernorm" in name.lower():
                 no_decay_params.append(param)
             else:
                 decay_params.append(param)
@@ -120,7 +121,8 @@ def run_experiment(cfg: TrainConfig) -> str:
     else:
         raise ValueError(f"Unsupported optimizer '{cfg.optimizer}'. Use 'adam' or 'adamw'.")
     
-    num_training_steps = cfg.epochs * math.ceil(len(train_loader))
+    steps_per_epoch_eff = math.ceil(len(train_loader) / max(1, cfg.grad_accum_steps))
+    num_training_steps = cfg.epochs * steps_per_epoch_eff
     scheduler = get_cosine_schedule_with_warmup(
         optimizer,
         num_warmup_steps=int(cfg.warmup_ratio * num_training_steps),
@@ -152,6 +154,7 @@ def run_experiment(cfg: TrainConfig) -> str:
             tb_writer=writer,
             global_step_start=global_step,
             max_grad_norm=cfg.max_grad_norm,
+            grad_accum_steps=cfg.grad_accum_steps,
         )
         global_step += steps_per_epoch
 
