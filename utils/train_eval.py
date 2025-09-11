@@ -1,4 +1,4 @@
-from typing import Iterable, Tuple, Dict, Optional
+from typing import Iterable, Tuple, Dict, Optional, Any
 import os
 import torch
 from torch import nn
@@ -21,7 +21,7 @@ from utils.cuda_helper import CUDAPrefetchLoader
 
 
 def train_one_epoch(
-    dataloader: Tuple[DataLoader, CUDAPrefetchLoader],
+    dataloader: Iterable,
     model: torch.nn.Module,
     loss_fn: nn.Module,
     optimizer: Optimizer,
@@ -31,7 +31,12 @@ def train_one_epoch(
     scheduler: Optional[torch.optim.lr_scheduler.LRScheduler] = None,
     tb_writer: Optional[SummaryWriter] = None,
     global_step_start: int = 0
-): # -> Dict[str, float]:
+)-> Dict[str, float]:
+    """Train one full epoch.
+
+    Logs per-step metrics if ``tb_writer`` is provided and returns average
+    loss and accuracy for the epoch.
+    """
     
     model.train()
     running_loss = 0.0
@@ -93,7 +98,7 @@ def train_one_epoch(
 
 @torch.no_grad()
 def evaluate(
-    dataloader: Tuple[DataLoader, CUDAPrefetchLoader],
+    dataloader: Iterable,
     model,
     loss_fn: nn.Module,
     device: torch.device,
@@ -104,7 +109,11 @@ def evaluate(
     log_prefix: str = "val",
     topks: Tuple[int, ...] = (3, 5),
     fig_dir: Optional[str] = None,
-):
+)-> Dict[str, Any]:
+    """Evaluate model and compute a suite of multiclass metrics.
+
+    Also generates and optionally logs confusion matrix and ROC(micro) figures.
+    """
     model.eval()
 
     acc_top1 = MulticlassAccuracy(num_classes=num_classes).to(device)
@@ -209,4 +218,3 @@ def evaluate(
         "roc_micro": (fpr, tpr),
         "figure_paths": figure_paths,
     }
-

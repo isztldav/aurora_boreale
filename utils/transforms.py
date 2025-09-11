@@ -1,3 +1,4 @@
+"""Image transforms using Hugging Face processors and optional augmentations."""
 from typing import Tuple
 import torch
 from torchvision import transforms
@@ -5,6 +6,7 @@ from transformers import AutoImageProcessor
 import random
 
 class RandomNoise:
+    """Add random Gaussian noise with probability ``p``."""
     def __init__(self, mean=0.0, std=0.05, p=0.5):
         self.mean = mean
         self.std = std
@@ -19,6 +21,7 @@ class RandomNoise:
 
 
 class RandomBlackSpots:
+    """Draw random black rectangles to simulate occlusions/artefacts."""
     def __init__(self, processor_name:str, num_spots=5, max_size=0.2, p=0.5, fill=0):
         self.num_spots = num_spots
         self.max_size = max_size
@@ -42,6 +45,7 @@ class RandomBlackSpots:
         return img
 
 class RandomRotation:
+    """Rotate the image by a random angle within ``degrees``."""
     def __init__(self, processor_name:str, degrees: int, fill=0):
 
         processor = AutoImageProcessor.from_pretrained(processor_name)
@@ -57,6 +61,7 @@ class RandomRotation:
         return self.randomRotation(img)
 
 class ProcessorTransform:
+    """Wrap an ``AutoImageProcessor`` to output normalized pixel values."""
     def __init__(self, model_flavour: str, use_fast: bool = True):
         self.processor = AutoImageProcessor.from_pretrained(model_flavour, use_fast=use_fast)
 
@@ -66,6 +71,7 @@ class ProcessorTransform:
         return pixel_values[0]                # -> (C, H, W)
 
 def build_transforms(model_flavour: str) -> Tuple[transforms.Compose, transforms.Compose]:
+    """Return train/eval transforms compatible with ``model_flavour``."""
     train_tfms = transforms.Compose([
         #transforms.Lambda(lambda x: x.to(torch.float) / 255.0),
         #transforms.RandomRotation(20, fill=0),

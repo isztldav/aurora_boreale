@@ -11,7 +11,16 @@ from collections import Counter
 
 from .config import TrainConfig
 
+
 def collate_fn(batch):
+    """Simple collate function to stack images and labels.
+
+    Args:
+        batch: Sequence of ``(image_tensor, label_int)``.
+
+    Returns:
+        Tuple[torch.Tensor, torch.Tensor]: batched images and labels.
+    """
     images, labels = zip(*batch)
     images = torch.stack(images, dim=0)
     labels = torch.tensor(labels, dtype=torch.long)
@@ -23,6 +32,10 @@ def build_dataloaders(
     eval_tfms,
     cfg: TrainConfig
 ):
+    """Create train/val/test dataloaders from a folder structure.
+
+    Expects subfolders ``train``, ``val``, and optionally ``test`` under ``root``.
+    """
     train_p = os.path.join(root, "train")
     val_p   = os.path.join(root, "val")
     test_p  = os.path.join(root, "test")
@@ -46,6 +59,7 @@ def build_dataloaders(
     return train_loader, val_loader, test_loader
 
 def build_label_maps(train_dataset) -> Tuple[dict, dict]:
+    """Build mapping dicts between class names and integer IDs."""
     label2id = {c: i for i, c in enumerate(train_dataset.classes)}
     id2label = {i: c for c, i in label2id.items()}
     return label2id, id2label
