@@ -30,7 +30,8 @@ def train_one_epoch(
     epoch: int,
     scheduler: Optional[torch.optim.lr_scheduler.LRScheduler] = None,
     tb_writer: Optional[SummaryWriter] = None,
-    global_step_start: int = 0
+    global_step_start: int = 0,
+    max_grad_norm: Optional[float] = None,
 )-> Dict[str, float]:
     """Train one full epoch.
 
@@ -57,6 +58,12 @@ def train_one_epoch(
         prev_scale = scaler.get_scale()
 
         scaler.scale(loss).backward()
+
+        # Gradient clipping (after unscale) to improve stability, esp. for scratch Swin
+        if max_grad_norm is not None and max_grad_norm > 0:
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+
         scaler.step(optimizer)
         scaler.update()
         

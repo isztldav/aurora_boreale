@@ -17,6 +17,7 @@ class TrainConfig:
     optimizer: str = "adam"  # one of: "adam", "adamw"
     lr: float = 1e-3
     weight_decay: float = 0.05
+    max_grad_norm: float = 1.0
     warmup_ratio: float = 0.05
     grad_accum_steps: int = 1
     seed: int = 42
@@ -66,5 +67,4 @@ def save_train_config(cfg: TrainConfig, path: str) -> str:
         f.write("\n")
     os.replace(tmp_path, path)  # atomic on POSIX/NT
     return path
-
 

@@ -94,11 +94,29 @@ def run_experiment(cfg: TrainConfig) -> str:
         freeze_backbone=cfg.freeze_backbone,
     ).to(device)
 
+    # Build parameter groups to avoid weight decay on LayerNorm/bias (stability for ViT/Swin)
+    def build_param_groups(module: torch.nn.Module, weight_decay: float):
+        decay_params, no_decay_params = [], []
+        for name, param in module.named_parameters():
+            if not param.requires_grad:
+                continue
+            if name.endswith("bias") or "norm" in name.lower() or "layernorm" in name.lower():
+                no_decay_params.append(param)
+            else:
+                decay_params.append(param)
+        return [
+            {"params": decay_params, "weight_decay": weight_decay},
+            {"params": no_decay_params, "weight_decay": 0.0},
+        ]
+
     opt_name = getattr(cfg, "optimizer", "adam").lower()
     if opt_name == "adamw":
-        optimizer = AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
+        param_groups = build_param_groups(model, cfg.weight_decay)
+        optimizer = AdamW(param_groups, lr=cfg.lr)
     elif opt_name == "adam":
-        optimizer = Adam(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
+        # Preserve previous behavior: no weight decay when using Adam
+        param_groups = build_param_groups(model, 0.0)
+        optimizer = Adam(param_groups, lr=cfg.lr)
     else:
         raise ValueError(f"Unsupported optimizer '{cfg.optimizer}'. Use 'adam' or 'adamw'.")
     
@@ -131,8 +149,9 @@ def run_experiment(cfg: TrainConfig) -> str:
             scaler=scaler,
             epoch=epoch,
             scheduler=scheduler,
-            tb_writer=None,
+            tb_writer=writer,
             global_step_start=global_step,
+            max_grad_norm=cfg.max_grad_norm,
         )
         global_step += steps_per_epoch
 
