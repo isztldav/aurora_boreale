@@ -75,8 +75,8 @@ def build_transforms(model_flavour: str) -> Tuple[transforms.Compose, transforms
     train_tfms = transforms.Compose([
         ProcessorTransform(model_flavour),
         # Light augmentations in normalized tensor space
-        transforms.RandomHorizontalFlip(p=0.5),
-        RandomRotation(processor_name=model_flavour, degrees=10),
+        #transforms.RandomHorizontalFlip(p=0.5),
+        #RandomRotation(processor_name=model_flavour, degrees=10),
     ])
     eval_tfms = transforms.Compose([
         #transforms.Lambda(lambda x: x.to(torch.float) / 255.0),

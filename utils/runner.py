@@ -155,6 +155,7 @@ def run_experiment(cfg: TrainConfig) -> str:
             global_step_start=global_step,
             max_grad_norm=cfg.max_grad_norm,
             grad_accum_steps=cfg.grad_accum_steps,
+            autocast_dtype=cfg.autocast_dtype,
         )
         global_step += steps_per_epoch
 
@@ -174,6 +175,7 @@ def run_experiment(cfg: TrainConfig) -> str:
             log_prefix="val",
             fig_dir=os.path.join(tb_log_dir, "figures"),
             topks=cfg.eval_topk,
+            autocast_dtype=cfg.autocast_dtype,
         )
 
         if writer:

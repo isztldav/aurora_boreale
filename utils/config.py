@@ -2,6 +2,7 @@ from dataclasses import dataclass, asdict
 from typing import Optional, Tuple, Any
 import os
 import json
+import torch
 
 @dataclass
 class TrainConfig:
@@ -21,6 +22,7 @@ class TrainConfig:
     warmup_ratio: float = 0.05
     grad_accum_steps: int = 1
     seed: int = 42
+    autocast_dtype: torch.dtype = torch.bfloat16
     #log_every: int = 100
 
     # HF model weights

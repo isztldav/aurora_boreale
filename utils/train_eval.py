@@ -27,12 +27,14 @@ def train_one_epoch(
     optimizer: Optimizer,
     device: torch.device,
     scaler: torch.amp.GradScaler,
+    autocast_dtype: torch.dtype,
     epoch: int,
     scheduler: Optional[torch.optim.lr_scheduler.LRScheduler] = None,
     tb_writer: Optional[SummaryWriter] = None,
     global_step_start: int = 0,
     max_grad_norm: Optional[float] = None,
     grad_accum_steps: int = 1,
+    
 )-> Dict[str, float]:
     """Train one full epoch.
 
@@ -52,7 +54,7 @@ def train_one_epoch(
         input = input.to(device, non_blocking=True)
         expected = expected.to(device, non_blocking=True)
 
-        with torch.autocast(device_type="cuda", enabled=torch.cuda.is_available()):
+        with torch.autocast(device_type="cuda", dtype=autocast_dtype, enabled=torch.cuda.is_available()):
             logits = model(input).logits
             loss = loss_fn(logits, expected)
         
@@ -112,6 +114,7 @@ def evaluate(
     model,
     loss_fn: nn.Module,
     device: torch.device,
+    autocast_dtype: torch.dtype,
     epoch: int,
     num_classes: int,
     id2label: dict,
@@ -145,7 +148,7 @@ def evaluate(
         X = X.to(device, non_blocking=True)
         y = y.to(device, non_blocking=True)
 
-        with torch.autocast(device_type="cuda", enabled=torch.cuda.is_available()):
+        with torch.autocast(device_type="cuda", dtype=autocast_dtype, enabled=torch.cuda.is_available()):
             logits = model(X).logits
             probs = torch.softmax(logits, dim=1)
             total_loss += loss_fn(logits, y).item()
