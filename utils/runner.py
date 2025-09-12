@@ -35,8 +35,13 @@ def _perform_checkpoint(
     epoch: int,
     scheduler: Optional[torch.optim.lr_scheduler.LRScheduler],
     eval_metrics: dict,
-) -> None:
-    """Save epoch and best checkpoints, logging concise messages."""
+) -> tuple[Optional[float], bool]:
+    """Save epoch and best checkpoints, logging concise messages.
+
+    Returns
+    - best_val: The best value so far for the monitored metric
+    - is_best: Whether current epoch improved the monitored metric
+    """
     best_val, is_best, best_path, epoch_path = save_model_checkpoints(
         model=model,
         optimizer=optimizer,
@@ -55,6 +60,7 @@ def _perform_checkpoint(
         )
     if epoch_path:
         print(f"[checkpoint] Saved epoch weights to: {epoch_path}")
+    return best_val, is_best
 
 
 def run_experiment(cfg: TrainConfig) -> str:
@@ -142,6 +148,8 @@ def run_experiment(cfg: TrainConfig) -> str:
 
     # Train/eval loop
     global_step = 0
+    best_epoch_so_far: Optional[int] = None
+    best_acc_at_best: Optional[float] = None
     for epoch in range(cfg.epochs):
         steps_per_epoch = len(train_loader)
 
@@ -197,7 +205,8 @@ def run_experiment(cfg: TrainConfig) -> str:
                 writer, "Confusion_Matrix", eval_metrics["confusion_matrix"], None, global_step=epoch
             )
 
-        _perform_checkpoint(
+        # --- Checkpointing and best tracking ---
+        best_val, is_best = _perform_checkpoint(
             cfg=cfg,
             model=model,
             optimizer=optimizer,
@@ -205,4 +214,13 @@ def run_experiment(cfg: TrainConfig) -> str:
             scheduler=scheduler,
             eval_metrics=eval_metrics,
         )
+        if is_best:
+            best_epoch_so_far = epoch + 1  # human-friendly
+            # Always track accuracy at the best epoch (acc@1)
+            best_acc_at_best = float(eval_metrics.get("val_acc@1", float("nan")))
+
+        # --- TensorBoard: log best epoch and its accuracy ---
+        if writer and best_epoch_so_far is not None and best_acc_at_best is not None:
+            writer.add_scalar("best/epoch", best_epoch_so_far, epoch)
+            writer.add_scalar("best/acc@1", best_acc_at_best, epoch)
     return tb_log_dir
