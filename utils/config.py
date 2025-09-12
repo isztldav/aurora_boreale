@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict
-from typing import Optional, Tuple, Any
+from typing import Optional, Tuple, Any, Union, Iterable
 import os
 import json
 import torch
@@ -42,15 +42,26 @@ class TrainConfig:
     save_per_epoch_checkpoint: bool = False
 
     # Dataset
-    max_datapoints_per_class: int = 10_000
+    max_datapoints_per_class: Union[int, Iterable] = 10_000
 
 
 def _convert_jsonable(obj: Any):
-    """Recursively convert tuples/sets to lists so JSON can serialize them."""
+    """Recursively convert objects so JSON can serialize them.
+
+    - Containers -> same type with converted elements
+    - torch.dtype -> string (e.g., "torch.bfloat16")
+    """
     if isinstance(obj, dict):
         return {k: _convert_jsonable(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple, set)):
         return [_convert_jsonable(v) for v in list(obj)]
+    # Handle torch dtype
+    try:
+        import torch as _torch  # local import to avoid cycles
+        if isinstance(obj, _torch.dtype):
+            return str(obj)
+    except Exception:
+        pass
     return obj
 
 def save_train_config(cfg: TrainConfig, path: str) -> str:
