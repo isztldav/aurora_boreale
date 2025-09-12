@@ -1,7 +1,9 @@
-"""Image transforms using Hugging Face processors and optional augmentations."""
+"""Image transforms that operate on tensor inputs (CxHxW, uint8),
+using HF processor metadata for size/normalization."""
 from typing import Tuple
 import torch
 from torchvision import transforms
+from torchvision.transforms import InterpolationMode
 from transformers import AutoImageProcessor
 import random
 
@@ -60,27 +62,37 @@ class RandomRotation:
     def __call__(self, img):
         return self.randomRotation(img)
 
-class ProcessorTransform:
-    """Wrap an ``AutoImageProcessor`` to output normalized pixel values."""
-    def __init__(self, model_flavour: str, use_fast: bool = True):
-        self.processor = AutoImageProcessor.from_pretrained(model_flavour, use_fast=use_fast)
-
-    def __call__(self, img):
-        batch = self.processor(img, return_tensors="pt")
-        pixel_values = batch["pixel_values"]  # shape: (1, C, H, W), dtype: float32
-        return pixel_values[0]                # -> (C, H, W)
+def _get_target_image_size(processor: AutoImageProcessor) -> int:
+    size = getattr(processor, "size", None)
+    if isinstance(size, dict):
+        if "shortest_edge" in size:
+            return int(size["shortest_edge"])  # common for processors
+        if "height" in size and "width" in size and int(size["height"]) == int(size["width"]):
+            return int(size["height"])
+    if isinstance(size, int):
+        return int(size)
+    return 224
 
 def build_transforms(model_flavour: str) -> Tuple[transforms.Compose, transforms.Compose]:
-    """Return train/eval transforms compatible with ``model_flavour``."""
+    """Return train/eval transforms for tensor inputs.
+
+    Expects input images as CxHxW uint8 tensors (from torchvision.io.read_image)."""
+    processor = AutoImageProcessor.from_pretrained(model_flavour, use_fast=True)
+    size = _get_target_image_size(processor)
+    mean = processor.image_mean
+    std = processor.image_std
+
     train_tfms = transforms.Compose([
-        ProcessorTransform(model_flavour),
-        # Light augmentations in normalized tensor space
-        #transforms.RandomHorizontalFlip(p=0.5),
-        #RandomRotation(processor_name=model_flavour, degrees=10),
+        transforms.Resize(size, interpolation=InterpolationMode.BILINEAR),
+        transforms.CenterCrop(size),
+        transforms.ConvertImageDtype(torch.float32),
+        transforms.Normalize(mean=mean, std=std),
     ])
+
     eval_tfms = transforms.Compose([
-        #transforms.Lambda(lambda x: x.to(torch.float) / 255.0),
-        ProcessorTransform(model_flavour),
-        #transforms.Lambda(lambda x: torch.clamp(x, -1, 1)),
+        transforms.Resize(size, interpolation=InterpolationMode.BILINEAR),
+        transforms.CenterCrop(size),
+        transforms.ConvertImageDtype(torch.float32),
+        transforms.Normalize(mean=mean, std=std),
     ])
     return train_tfms, eval_tfms

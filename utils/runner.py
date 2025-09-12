@@ -135,7 +135,7 @@ def run_experiment(cfg: TrainConfig) -> str:
     writer: Optional[SummaryWriter]
     writer, tb_log_dir = create_tb_writer(run_name=cfg.run_name, root_dir=cfg.tb_root)
     # Save the train configuration into the checkpoint dir for traceability
-    save_train_config(cfg, os.path.join(cfg.ckpt_dir, cfg.run_name or "default", "train_config.json"))
+    #save_train_config(cfg, os.path.join(cfg.ckpt_dir, cfg.run_name or "default", "train_config.json"))
 
     # Train/eval loop
     global_step = 0
