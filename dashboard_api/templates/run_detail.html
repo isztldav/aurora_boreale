@@ -25,11 +25,31 @@
   {% endcall %}
 
   {% call ui.card('TensorBoard') %}
-    <div class="h-[70vh] w-full border rounded-md overflow-hidden bg-white dark:bg-slate-900">
+    <div class="flex items-center justify-between mb-2">
+      <div class="text-sm text-slate-600 dark:text-slate-300">Live metrics</div>
+      <button class="btn btn-ghost" id="tb_expand_btn">⤢ Expand</button>
+    </div>
+    <div class="h-[70vh] w-full border rounded-md overflow-hidden bg-white dark:bg-slate-900" id="tb_card_container">
       <div id="tb_placeholder" class="p-3 text-sm text-slate-600 dark:text-slate-300">Starting TensorBoard for this run…</div>
       <iframe id="tb_frame" class="hidden h-full w-full" src="" referrerpolicy="no-referrer"></iframe>
     </div>
   {% endcall %}
+
+  <!-- Fullscreen TensorBoard overlay -->
+  <div id="tb_overlay" class="hidden fixed inset-0 z-50 bg-slate-900/80">
+    <div class="absolute inset-4 bg-white dark:bg-slate-900 rounded-md shadow-2xl overflow-hidden flex flex-col">
+      <div class="p-2 flex items-center justify-between border-b border-slate-200 dark:border-slate-700">
+        <div class="text-sm font-medium">TensorBoard — Full View</div>
+        <div class="space-x-2">
+          <a id="tb_open_new" target="_blank" class="btn btn-ghost">↗ Open in new tab</a>
+          <button class="btn" id="tb_close_btn">✕ Close</button>
+        </div>
+      </div>
+      <div class="flex-1">
+        <iframe id="tb_frame_full" class="h-full w-full" src="" referrerpolicy="no-referrer"></iframe>
+      </div>
+    </div>
+  </div>
 <script>
 async function post(url){ const r = await fetch(url, {method:'POST'}); if(r.ok) toast('Updated'); await refresh(); }
 async function refresh(){
@@ -67,6 +87,11 @@ async function refresh(){
       frame.src = url + '#scalars';
       frame.classList.remove('hidden');
       if (ph) ph.remove();
+      // Update overlay targets
+      const full = document.getElementById('tb_frame_full');
+      const openNew = document.getElementById('tb_open_new');
+      if(full && !full.src) full.src = url + '#scalars';
+      if(openNew) openNew.href = url;
     }
   } catch (e) { /* ignore */ }
 }
@@ -75,6 +100,19 @@ setInterval(refresh, 5000);
 document.getElementById('halt_btn').addEventListener('click', async ()=>{
   const r = await fetch('/api/v1/runs/{{ run_id }}/halt', {method:'POST'});
   if(r.ok) toast('Halt requested');
+});
+// TB expand/collapse
+document.getElementById('tb_expand_btn').addEventListener('click', ()=>{
+  const overlay = document.getElementById('tb_overlay');
+  // Sync URLs in case changed
+  const small = document.getElementById('tb_frame');
+  const full = document.getElementById('tb_frame_full');
+  if(small && full && small.src && full.src !== small.src){ full.src = small.src; }
+  overlay.classList.remove('hidden');
+});
+document.getElementById('tb_close_btn').addEventListener('click', ()=>{
+  const overlay = document.getElementById('tb_overlay');
+  overlay.classList.add('hidden');
 });
 </script>
 {% endblock %}
