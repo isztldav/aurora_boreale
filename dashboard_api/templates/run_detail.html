@@ -91,7 +91,7 @@ async function refresh(){
       const full = document.getElementById('tb_frame_full');
       const openNew = document.getElementById('tb_open_new');
       if(full && !full.src) full.src = url + '#scalars';
-      if(openNew) openNew.href = url;
+      if(openNew) openNew.href = '/web/tensorboard/{{ run_id }}';
     }
   } catch (e) { /* ignore */ }
 }
@@ -109,10 +109,63 @@ document.getElementById('tb_expand_btn').addEventListener('click', ()=>{
   const full = document.getElementById('tb_frame_full');
   if(small && full && small.src && full.src !== small.src){ full.src = small.src; }
   overlay.classList.remove('hidden');
+  _fullVisible = true;
 });
 document.getElementById('tb_close_btn').addEventListener('click', ()=>{
   const overlay = document.getElementById('tb_overlay');
   overlay.classList.add('hidden');
+  _fullVisible = false;
 });
+
+// --- TensorBoard heartbeat to control lifecycle ---
+let _hbTimer = null;
+let _smallVisible = false;
+let _fullVisible = false;
+const _runId = '{{ run_id }}';
+
+function _sendHeartbeat() {
+  return fetch('/api/v1/tensorboard/heartbeat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    // keepalive allows the browser to send the request during unload
+    keepalive: true,
+    body: JSON.stringify({ run_id: _runId })
+  }).catch(()=>{});
+}
+
+function _updateHeartbeatLoop() {
+  if (_hbTimer) { clearInterval(_hbTimer); _hbTimer = null; }
+  const tick = () => {
+    const pageVisible = document.visibilityState === 'visible';
+    if (pageVisible && (_smallVisible || _fullVisible)) {
+      _sendHeartbeat();
+    }
+  };
+  // initial ping if visible
+  tick();
+  _hbTimer = setInterval(tick, 10_000);
+}
+
+// Observe if the small TB iframe is actually visible in viewport
+const _tbFrame = document.getElementById('tb_frame');
+const _obs = new IntersectionObserver((entries) => {
+  entries.forEach((e) => {
+    _smallVisible = e.isIntersecting && !_tbFrame.classList.contains('hidden');
+  });
+}, { root: null, threshold: 0.01 });
+if (_tbFrame) _obs.observe(_tbFrame);
+
+document.addEventListener('visibilitychange', _updateHeartbeatLoop);
+window.addEventListener('beforeunload', () => {
+  try {
+    if (navigator.sendBeacon) {
+      const blob = new Blob([JSON.stringify({ run_id: _runId })], { type: 'application/json' });
+      navigator.sendBeacon('/api/v1/tensorboard/heartbeat', blob);
+    }
+  } catch (_) { /* ignore */ }
+});
+
+// Start the heartbeat loop now
+_updateHeartbeatLoop();
 </script>
 {% endblock %}

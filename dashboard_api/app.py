@@ -26,6 +26,8 @@ def create_app() -> FastAPI:
     app.include_router(datasets.router, prefix="/api/v1")
     app.include_router(registry_models.router, prefix="/api/v1")
     app.include_router(augmentations.router, prefix="/api/v1")
+    from .routers import tensorboard as tb_router
+    app.include_router(tb_router.router, prefix="/api/v1")
 
     # Static and templates for a minimal web UI
     app.mount("/static", StaticFiles(directory="dashboard_api/static"), name="static")
@@ -102,6 +104,16 @@ def create_app() -> FastAPI:
             )
         finally:
             db.close()
+
+    @app.get("/web/tensorboard/{run_id}", response_class=HTMLResponse)
+    async def web_tb_full(run_id: str, request: Request):
+        # Render a wrapper page that embeds TB in an iframe so heartbeats can be tracked
+        from .tensorboard import get_embedded_url_path
+        tb_url = get_embedded_url_path(run_id)
+        return templates.TemplateResponse(
+            "tensorboard_full.html",
+            {"request": request, "run_id": run_id, "tb_url": tb_url},
+        )
 
     @app.get("/web/agents", response_class=HTMLResponse)
     async def web_agents(request: Request):

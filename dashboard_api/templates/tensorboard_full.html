@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TensorBoard — Full View</title>
+  <link rel="stylesheet" href="/static/css/app.css" />
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #frame { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
+    .topbar { position: fixed; top: 8px; right: 8px; z-index: 10; }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const runId = '{{ run_id }}';
+      const frame = document.getElementById('frame');
+      const url = '{{ tb_url }}';
+      frame.src = url.endsWith('/') ? url + '#scalars' : (url + '/#scalars');
+
+      function sendHeartbeat() {
+        fetch('/api/v1/tensorboard/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          keepalive: true,
+          body: JSON.stringify({ run_id: runId })
+        }).catch(() => {});
+      }
+
+      const tick = () => {
+        if (document.visibilityState === 'visible') sendHeartbeat();
+      };
+      tick();
+      const timer = setInterval(tick, 10000);
+      document.addEventListener('visibilitychange', tick);
+      window.addEventListener('beforeunload', () => {
+        try {
+          if (navigator.sendBeacon) {
+            const blob = new Blob([JSON.stringify({ run_id: runId })], { type: 'application/json' });
+            navigator.sendBeacon('/api/v1/tensorboard/heartbeat', blob);
+          }
+        } catch (_) {}
+      });
+    });
+  </script>
+</head>
+<body>
+  <iframe id="frame" referrerpolicy="no-referrer"></iframe>
+</body>
+</html>
+

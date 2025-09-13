@@ -2,13 +2,67 @@ import os
 import threading
 import logging
 from typing import Dict, Optional, Callable
+import time
 
 
 # WSGI app cache per run_id
 _apps: Dict[str, Callable] = {}
 _app_logdirs: Dict[str, str] = {}
+# Track TB data ingesters per app so we can stop their background reload loops
+_app_ingesters: Dict[str, object] = {}
 _lock = threading.Lock()
 _log = logging.getLogger("dashboard.tensorboard")
+
+# Heartbeat timestamps per run_id to control lifecycle
+_last_ping: Dict[str, float] = {}
+
+# Idle eviction configuration (seconds)
+IDLE_TIMEOUT = int(os.environ.get("TB_IDLE_TIMEOUT", "60"))
+SWEEP_INTERVAL = int(os.environ.get("TB_SWEEP_INTERVAL", "10"))
+_sweeper_started = False
+_sweeper_thread: Optional[threading.Thread] = None
+
+
+def _start_sweeper_if_needed():
+    global _sweeper_started, _sweeper_thread
+    with _lock:
+        if _sweeper_started:
+            return
+        _sweeper_started = True
+
+        def _sweeper():
+            while True:
+                try:
+                    now = time.time()
+                    to_evict: list[str] = []
+                    with _lock:
+                        for run_id, ts in list(_last_ping.items()):
+                            if now - ts > IDLE_TIMEOUT:
+                                to_evict.append(run_id)
+                        for run_id in to_evict:
+                            if run_id in _apps:
+                                _log.info(
+                                    "Evicting idle TensorBoard app run_id=%s (idle %.1fs)",
+                                    run_id,
+                                    now - _last_ping.get(run_id, now),
+                                )
+                                # Best-effort: stop LocalDataIngester's background reload loop
+                                ing = _app_ingesters.pop(run_id, None)
+                                try:
+                                    if ing is not None and hasattr(ing, "_reload_interval"):
+                                        # Setting to 0 causes the loop to exit on next tick
+                                        setattr(ing, "_reload_interval", 0)
+                                except Exception:
+                                    _log.debug("Failed to adjust ingester reload interval for %s", run_id)
+                                _apps.pop(run_id, None)
+                                _app_logdirs.pop(run_id, None)
+                            _last_ping.pop(run_id, None)
+                except Exception as e:
+                    _log.exception("Error in TensorBoard sweeper: %s", e)
+                time.sleep(SWEEP_INTERVAL)
+
+        _sweeper_thread = threading.Thread(target=_sweeper, name="tb-sweeper", daemon=True)
+        _sweeper_thread.start()
 
 
 def _build_tb_wsgi_app(logdir: str, path_prefix: str):
@@ -26,7 +80,7 @@ def _build_tb_wsgi_app(logdir: str, path_prefix: str):
         "--logdir",
         os.path.abspath(logdir),
         "--reload_interval",
-        "5",
+        "30",
         # Keep everything in-process; no external data server.
         "--load_fast",
         "false",
@@ -39,13 +93,19 @@ def _build_tb_wsgi_app(logdir: str, path_prefix: str):
     )
 
     data_provider, deprecated_multiplexer = tb._make_data_provider()
-    return tb_application.TensorBoardWSGIApp(
+    app = tb_application.TensorBoardWSGIApp(
         tb.flags,
         tb.plugin_loaders,
         data_provider,
         tb.assets_zip_provider,
         deprecated_multiplexer,
     )
+    # Attach the ingester so callers can control its lifecycle
+    try:
+        setattr(app, "_tb_ingester", getattr(tb, "_ingester", None))
+    except Exception:
+        pass
+    return app
 
 
 def get_or_create_tb_app(run_id: str, logdir: str, mount_prefix: str):
@@ -54,6 +114,7 @@ def get_or_create_tb_app(run_id: str, logdir: str, mount_prefix: str):
     ``mount_prefix`` is the URL path under which this app is mounted, e.g. ``/tb/{run_id}``.
     """
     logdir = os.path.abspath(logdir)
+    _start_sweeper_if_needed()
     with _lock:
         existing = _apps.get(run_id)
         if existing and _app_logdirs.get(run_id) == logdir:
@@ -63,7 +124,20 @@ def get_or_create_tb_app(run_id: str, logdir: str, mount_prefix: str):
         app = _build_tb_wsgi_app(logdir, path_prefix=mount_prefix)
         _apps[run_id] = app
         _app_logdirs[run_id] = logdir
+        # Stash the data ingester for this app if present
+        ing = getattr(app, "_tb_ingester", None)
+        if ing is not None:
+            _app_ingesters[run_id] = ing
         return app
+
+
+def record_heartbeat(run_id: str):
+    """Record a heartbeat for the given run_id to keep its TB app alive."""
+    _start_sweeper_if_needed()
+    with _lock:
+        _last_ping[run_id] = time.time()
+        # No-op if app not yet created; it'll be lazily created on access
+        return {"ok": True, "idle_timeout": IDLE_TIMEOUT}
 
 
 def get_embedded_url_path(run_id: str) -> str:
@@ -143,7 +217,11 @@ def make_dispatcher(db_session_factory, models_module):
         # Compose nested SCRIPT_NAME as if mounted at /tb/<run_id>
         base_mount = environ.get("SCRIPT_NAME", "")
         mount_prefix = f"{base_mount}/{run_id}"
+        # Keep app warm on access
         tb_app = get_or_create_tb_app(run_id, logdir, mount_prefix)
+        # Do NOT treat generic TB HTTP traffic as activity. Rely solely on
+        # explicit heartbeats from the UI to decide liveness so background
+        # polling inside TensorBoard doesn't indefinitely keep apps alive.
 
         # Adjust environ for inner TB app: set SCRIPT_NAME to /tb/<run_id>
         # and pass only the remainder in PATH_INFO
