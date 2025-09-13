@@ -10,7 +10,7 @@
       <label class="field"><span>Name</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="name" placeholder="Name" required /></label>
       <label class="field"><span>Root</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="root_path" placeholder="/path/to/dataset" required /></label>
       <label class="field sm:col-span-2"><span>Split Layout</span><textarea class="mt-1 w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="split_layout" placeholder='{"train": true, "val": true, "test": false}' rows="3"></textarea></label>
-      <div><button class="btn primary" type="submit">Add Dataset</button></div>
+      <div><button class="btn btn-primary" type="submit">Add Dataset</button></div>
     </form>
   {% endcall %}
   {% call ui.card('Datasets') %}
@@ -25,7 +25,7 @@ async function fetchDS(){
   tbody.innerHTML='';
   data.forEach(d=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${d.name}</td><td><code>${d.root_path}</code></td><td>${new Date(d.created_at).toLocaleString()}</td><td><button class="btn danger" onclick=\"delDs('${d.id}')\">Delete</button></td>`;
+    tr.innerHTML = `<td>${d.name}</td><td><code>${d.root_path}</code></td><td>${new Date(d.created_at).toLocaleString()}</td><td><button class="btn btn-danger" onclick=\"delDs('${d.id}')\">Delete</button></td>`;
     tbody.appendChild(tr);
   });
 }

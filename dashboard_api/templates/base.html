@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}Unified Dashboard{% endblock %}</title>
     <link rel="stylesheet" href="/static/tw.css" />
+    <style>
+      /* Legacy button aliases to align styles across pages */
+      .btn.primary { border-color: transparent; background-color: rgb(37 99 235); color: #fff; }
+      .btn.primary:hover { background-color: rgb(29 78 216); }
+      .btn.ghost { border-color: transparent; background: transparent; }
+      .btn.warn { border-color: rgb(252 211 77); background-color: rgb(255 251 235); color: rgb(120 53 15); }
+      .btn.danger { border-color: rgb(252 165 165); background-color: rgb(254 242 242); color: rgb(159 18 57); }
+      .dark .btn.warn { border-color: rgb(217 119 6); background-color: rgba(146, 64, 14, .2); color: rgb(252 211 77); }
+      .dark .btn.danger { border-color: rgb(190 18 60); background-color: rgba(190, 18, 60, .2); color: rgb(252 165 165); }
+    </style>
     <script defer src="/static/app.js"></script>
     <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
     <script defer src="https://unpkg.com/alpinejs@3.14.0" integrity="sha384-4l9xQk2HIx2+qXPtec4uJz5thQ7X1h9Dg9F+8k3F7U7sJm1P+v3l5+QkYxgX0v2J" crossorigin="anonymous"></script>

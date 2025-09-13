@@ -4,8 +4,8 @@
 {% block content %}
   {% call ui.card('Create Project') %}
     <form id="create-project-form" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <label class="field"><span>Name</span><input class="px-3 py-2" name="name" placeholder="Name" required /></label>
-      <label class="field"><span>Description</span><input class="px-3 py-2" name="description" placeholder="Description" /></label>
+      <label class="field"><span>Name</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="name" placeholder="Name" required /></label>
+      <label class="field"><span>Description</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="description" placeholder="Description" /></label>
       <div><button class="btn btn-primary" type="submit">Create</button></div>
     </form>
   {% endcall %}

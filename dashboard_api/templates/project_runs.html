@@ -13,7 +13,12 @@
   {% endcall %}
 
   {% call ui.card('Existing Runs') %}
-    <table class="table" id="runsTable"><thead><tr><th>Name</th><th>State</th><th>Agent</th><th>Created</th></tr></thead><tbody></tbody></table>
+    <table class="table" id="runsTable">
+      <thead>
+        <tr><th>Name</th><th>State</th><th>Agent</th><th>Created</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   {% endcall %}
 
 <script>
@@ -44,7 +49,7 @@ async function fetchRuns(){
   tbody.innerHTML='';
   data.forEach(r=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><a href="/web/runs/${r.id}">${r.name}</a></td><td><span class="status dot ${r.state}">${r.state}</span></td><td>${r.agent_id? r.agent_id : ''}</td><td>${new Date(r.created_at).toLocaleString()}</td>`;
+    tr.innerHTML = `<td><a href="/web/runs/${r.id}">${r.name}</a></td><td><span class="status"><span class="status-dot status-${r.state}"></span>${r.state}</span></td><td>${r.agent_id? r.agent_id : ''}</td><td>${new Date(r.created_at).toLocaleString()}</td>`;
     tbody.appendChild(tr);
   });
 }

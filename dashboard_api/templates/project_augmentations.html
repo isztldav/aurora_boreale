@@ -11,7 +11,7 @@
       <label class="field"><span>Type</span><select class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="type"><option value="cpu">cpu</option><option value="gpu">gpu</option></select></label>
       <label class="field sm:col-span-2"><span>Params (JSON)</span><textarea class="mt-1 w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="params" placeholder='{"flip": true, "color_jitter": {"p": 0.2}}' rows="4"></textarea></label>
       <label class="field"><span>Enabled</span><input type="checkbox" name="enabled" checked /></label>
-      <div><button class="btn primary" type="submit">Add</button></div>
+      <div><button class="btn btn-primary" type="submit">Add</button></div>
     </form>
   {% endcall %}
   {% call ui.card('Augmentations') %}
@@ -26,7 +26,7 @@ async function fetchAugs(){
   tbody.innerHTML='';
   data.forEach(a=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${a.name}</td><td>${a.type}</td><td>${a.enabled?"Yes":"No"}</td><td><button class="btn" onclick=\"toggle('${a.id}', ${!a.enabled})\">${a.enabled?'Disable':'Enable'}</button> <button class=\"btn danger\" onclick=\"delAug('${a.id}')\">Delete</button></td>`;
+    tr.innerHTML = `<td>${a.name}</td><td>${a.type}</td><td>${a.enabled?\"Yes\":\"No\"}</td><td><button class=\"btn\" onclick=\\"toggle('${a.id}', ${!a.enabled})\\">${a.enabled?'Disable':'Enable'}</button> <button class=\\\"btn btn-danger\\\" onclick=\\\"delAug('${a.id}')\\\">Delete</button></td>`;
     tbody.appendChild(tr);
   });
 }
@@ -53,3 +53,4 @@ document.getElementById('create-aug').addEventListener('submit', async (e)=>{
 fetchAugs();
 </script>
 {% endblock %}
+
