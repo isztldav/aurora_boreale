@@ -1,4 +1,4 @@
-from typing import Iterable, Tuple, Dict, Optional, Any
+from typing import Iterable, Tuple, Dict, Optional, Any, Union
 import os
 import torch
 from torch import nn
@@ -21,12 +21,12 @@ from common.cuda_helper import CUDAPrefetchLoader
 
 
 def train_one_epoch(
-    dataloader: Tuple[DataLoader, CUDAPrefetchLoader],
+    dataloader: Union[DataLoader, CUDAPrefetchLoader],
     model: torch.nn.Module,
     loss_fn: nn.Module,
     optimizer: Optimizer,
     device: torch.device,
-    scaler: torch.amp.GradScaler,
+    scaler: torch.GradScaler,
     autocast_dtype: torch.dtype,
     epoch: int,
     scheduler: Optional[torch.optim.lr_scheduler.LRScheduler] = None,
@@ -113,7 +113,7 @@ def train_one_epoch(
 
 @torch.no_grad()
 def evaluate(
-    dataloader: Tuple[DataLoader, CUDAPrefetchLoader],
+    dataloader: Union[DataLoader, CUDAPrefetchLoader],
     model,
     loss_fn: nn.Module,
     device: torch.device,

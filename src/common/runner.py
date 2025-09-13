@@ -147,7 +147,7 @@ def run_experiment(
         num_training_steps=num_training_steps,
     )
     loss_fn = nn.CrossEntropyLoss()
-    scaler = torch.amp.GradScaler("cuda", enabled=torch.cuda.is_available())
+    scaler = torch.GradScaler("cuda", enabled=torch.cuda.is_available())
 
     # Logging
     writer: Optional[SummaryWriter]
@@ -159,90 +159,104 @@ def run_experiment(
     global_step = 0
     best_epoch_so_far: Optional[int] = None
     best_acc_at_best: Optional[float] = None
-    for epoch in range(cfg.epochs):
-        if should_stop and should_stop():
-            break
-        _epoch_start = time.time()
-        steps_per_epoch = len(train_loader)
 
-        train_metrics = train_eval.train_one_epoch(
-            dataloader=train_loader,
-            model=model,
-            loss_fn=loss_fn,
-            optimizer=optimizer,
-            device=device,
-            scaler=scaler,
-            epoch=epoch,
-            scheduler=scheduler,
-            tb_writer=writer,
-            global_step_start=global_step,
-            max_grad_norm=cfg.max_grad_norm,
-            grad_accum_steps=cfg.grad_accum_steps,
-            autocast_dtype=cfg.autocast_dtype,
-            batch_transform=train_batch_tf,
-        )
-        global_step += steps_per_epoch
+    try:
+        for epoch in range(cfg.epochs):
+            if should_stop and should_stop():
+                break
+            _epoch_start = time.time()
+            steps_per_epoch = len(train_loader)
 
-        if writer:
-            writer.add_scalar("train/epoch_loss", train_metrics["train_loss"], epoch)
-            writer.add_scalar("train/epoch_acc@1", train_metrics["train_acc@1"], epoch)
+            train_metrics = train_eval.train_one_epoch(
+                dataloader=train_loader,
+                model=model,
+                loss_fn=loss_fn,
+                optimizer=optimizer,
+                device=device,
+                scaler=scaler,
+                epoch=epoch,
+                scheduler=scheduler,
+                tb_writer=writer,
+                global_step_start=global_step,
+                max_grad_norm=cfg.max_grad_norm,
+                grad_accum_steps=cfg.grad_accum_steps,
+                autocast_dtype=cfg.autocast_dtype,
+                batch_transform=train_batch_tf,
+            )
+            global_step += steps_per_epoch
 
-        eval_metrics = train_eval.evaluate(
-            dataloader=val_loader,
-            model=model,
-            loss_fn=loss_fn,
-            device=device,
-            epoch=epoch,
-            num_classes=num_labels,
-            id2label=id2label,
-            tb_writer=writer,
-            log_prefix="val",
-            fig_dir=os.path.join(tb_log_dir, "figures"),
-            topks=cfg.eval_topk,
-            autocast_dtype=cfg.autocast_dtype,
-        )
+            if writer:
+                writer.add_scalar("train/epoch_loss", train_metrics["train_loss"], epoch)
+                writer.add_scalar("train/epoch_acc@1", train_metrics["train_acc@1"], epoch)
 
-        if writer:
-            writer.add_scalar("val/loss", eval_metrics["val_loss"], epoch)
-            for metric_key, metric_val in eval_metrics.items():
-                if metric_key.startswith("val_acc@"):
-                    k = metric_key.split("@", 1)[1]
-                    writer.add_scalar(f"val/acc@{k}", metric_val, epoch)
-            writer.add_scalar("val/auroc_macro", eval_metrics["val_auroc_macro"], epoch)
-            writer.add_scalar("val/map", eval_metrics["val_map"], epoch)
-            writer.add_scalar("val/f1_macro", eval_metrics["val_f1_macro"], epoch)
-            writer.add_scalar("val/cohenkappa", eval_metrics["val_cohenkappa"], epoch)
-            writer.add_scalar("val/recall_micro", eval_metrics["val_recall_micro"], epoch)
-            writer.add_scalar("val/recall_macro", eval_metrics["val_recall_macro"], epoch)
-            log_confusion_matrix_table(
-                writer, "Confusion_Matrix", eval_metrics["confusion_matrix"], None, global_step=epoch
+            eval_metrics = train_eval.evaluate(
+                dataloader=val_loader,
+                model=model,
+                loss_fn=loss_fn,
+                device=device,
+                epoch=epoch,
+                num_classes=num_labels,
+                id2label=id2label,
+                tb_writer=writer,
+                log_prefix="val",
+                fig_dir=os.path.join(tb_log_dir, "figures"),
+                topks=cfg.eval_topk,
+                autocast_dtype=cfg.autocast_dtype,
             )
 
-        # --- Checkpointing and best tracking ---
-        best_val, is_best = _perform_checkpoint(
-            cfg=cfg,
-            model=model,
-            optimizer=optimizer,
-            epoch=epoch,
-            scheduler=scheduler,
-            eval_metrics=eval_metrics,
-        )
-        if is_best:
-            best_epoch_so_far = epoch + 1  # human-friendly
-            # Always track accuracy at the best epoch (acc@1)
-            best_acc_at_best = float(eval_metrics.get("val_acc@1", float("nan")))
+            if writer:
+                writer.add_scalar("val/loss", eval_metrics["val_loss"], epoch)
+                for metric_key, metric_val in eval_metrics.items():
+                    if metric_key.startswith("val_acc@"):
+                        k = metric_key.split("@", 1)[1]
+                        writer.add_scalar(f"val/acc@{k}", metric_val, epoch)
+                writer.add_scalar("val/auroc_macro", eval_metrics["val_auroc_macro"], epoch)
+                writer.add_scalar("val/map", eval_metrics["val_map"], epoch)
+                writer.add_scalar("val/f1_macro", eval_metrics["val_f1_macro"], epoch)
+                writer.add_scalar("val/cohenkappa", eval_metrics["val_cohenkappa"], epoch)
+                writer.add_scalar("val/recall_micro", eval_metrics["val_recall_micro"], epoch)
+                writer.add_scalar("val/recall_macro", eval_metrics["val_recall_macro"], epoch)
+                log_confusion_matrix_table(
+                    writer, "Confusion_Matrix", eval_metrics["confusion_matrix"], None, global_step=epoch
+                )
 
-        # --- TensorBoard: log best epoch and its accuracy ---
-        if writer and best_epoch_so_far is not None and best_acc_at_best is not None:
-            writer.add_scalar("best/epoch", best_epoch_so_far, epoch)
-            writer.add_scalar("best/acc@1", best_acc_at_best, epoch)
-        # Progress callback with epoch duration
-        if progress_cb:
-            epoch_dur = time.time() - _epoch_start
+            # --- Checkpointing and best tracking ---
+            best_val, is_best = _perform_checkpoint(
+                cfg=cfg,
+                model=model,
+                optimizer=optimizer,
+                epoch=epoch,
+                scheduler=scheduler,
+                eval_metrics=eval_metrics,
+            )
+            if is_best:
+                best_epoch_so_far = epoch + 1  # human-friendly
+                # Always track accuracy at the best epoch (acc@1)
+                best_acc_at_best = float(eval_metrics.get("val_acc@1", float("nan")))
+
+            # --- TensorBoard: log best epoch and its accuracy ---
+            if writer and best_epoch_so_far is not None and best_acc_at_best is not None:
+                writer.add_scalar("best/epoch", best_epoch_so_far, epoch)
+                writer.add_scalar("best/acc@1", best_acc_at_best, epoch)
+            # Progress callback with epoch duration
+            if progress_cb:
+                epoch_dur = time.time() - _epoch_start
+                try:
+                    progress_cb(epoch, cfg.epochs, epoch_dur, tb_log_dir)
+                except Exception:
+                    pass
+            if should_stop and should_stop():
+                break
+    finally:
+        # Ensure TensorBoard file handles are released to prevent FD leaks
+        if writer is not None:
             try:
-                progress_cb(epoch, cfg.epochs, epoch_dur, tb_log_dir)
+                writer.flush()
             except Exception:
                 pass
-        if should_stop and should_stop():
-            break
+            try:
+                writer.close()
+            except Exception:
+                pass
+            
     return tb_log_dir
