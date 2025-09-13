@@ -123,10 +123,10 @@ UI Pages (simple Jinja templates):
 - Prereqs: Docker, Compose v2. For GPU, install NVIDIA drivers + NVIDIA Container Toolkit.
 - Why: The agent has heavy CUDA/PyTorch deps. We bake them into an image once and hot‑reload Python code via a bind mount.
 
-Build the agent image once (installs heavy deps):
+Build images once (installs deps into layers):
 
 ```bash
-docker compose build agent
+docker compose build web agent
 ```
 
 Run the full stack with hot reload for both web and agent:
@@ -139,9 +139,9 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 Notes
 - Source is mounted into containers (`.:/app`), so code edits in `src/` reload without rebuilding.
-- Agent runs with `--reload`; heavy wheels are preinstalled in the `src/agent/Dockerfile` layer.
-- Rebuild only when `src/agent/requirements.txt` changes.
-- GPUs are requested in `docker-compose.yml` via device reservations; set `GPU_INDEX` as needed.
+- Web and Agent dependencies are preinstalled in their images (`src/dashboard/Dockerfile`, `src/agent/Dockerfile`).
+- Rebuild only when the corresponding `requirements.txt` changes.
+- Agent runs with `--reload`; GPUs are requested in `docker-compose.yml` via device reservations; set `GPU_INDEX` as needed.
 - The web talks to the agent on the internal Docker network; you don’t need to expose the agent port for normal use.
  - `/web/projects/{id}/augmentations` → augmentation registry
 

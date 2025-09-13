@@ -292,6 +292,15 @@ class RunnerAgent:
 
 
 def create_app(agent_id: Optional[str] = None, gpu_index: Optional[int] = None) -> FastAPI:
+    # Allow env var fallback when invoked via uvicorn --factory (no args)
+    if agent_id is None:
+        agent_id = os.environ.get("AGENT_ID")
+    if gpu_index is None:
+        env_gpu = os.environ.get("GPU_INDEX")
+        try:
+            gpu_index = int(env_gpu) if env_gpu is not None else None
+        except Exception:
+            gpu_index = None
 
     # Discover GPU and determine a stable agent id
     gpu = _discover_gpu(gpu_index)

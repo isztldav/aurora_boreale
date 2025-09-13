@@ -5,8 +5,7 @@ services:
   
   web:
     command: >
-      bash -lc "pip install --no-cache-dir -r src/dashboard/requirements.txt && \
-      uvicorn src.dashboard.app:app --host 0.0.0.0 --port 8000 --reload \
+      bash -lc "uvicorn src.dashboard.app:app --host 0.0.0.0 --port 8000 --reload \
       --reload-dir /app/src \
       --reload-include '*.py' --reload-include '*.html' --reload-include '*.css' --reload-include '*.js' \
       --log-level debug"
@@ -14,5 +13,5 @@ services:
       DASHBOARD_DEBUG: "1"
 
   agent:
-    # Enable code reload for faster iteration during development
-    command: bash -lc "python -m agent.server --gpu-index $$GPU_INDEX --reload"
+    # Enable code reload using uvicorn factory; pass GPU index via env
+    command: bash -lc "uvicorn agent.server:create_app --host 0.0.0.0 --port 7070 --reload --factory"

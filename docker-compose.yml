@@ -17,7 +17,9 @@ services:
       - internal
 
   web:
-    image: python:3.11-slim
+    build:
+      context: .
+      dockerfile: src/dashboard/Dockerfile
     container_name: dashboard-web
     working_dir: /app
     # Mount the app source and a shared logs volume (TensorBoard runs)
@@ -32,8 +34,7 @@ services:
       TB_SWEEP_INTERVAL: "30"      # seconds
       PYTHONUNBUFFERED: "1"
       PYTHONPATH: /app/src
-    command: >
-      bash -lc "pip install --no-cache-dir -r src/dashboard/requirements.txt && python run_dashboard.py"
+    command: bash -lc "python run_dashboard.py"
     depends_on:
       db:
         condition: service_healthy
