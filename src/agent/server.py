@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
 import socket
 import uuid
 from typing import Dict
@@ -291,7 +292,6 @@ class RunnerAgent:
 
 
 def create_app(agent_id: Optional[str] = None, gpu_index: Optional[int] = None) -> FastAPI:
-    app = FastAPI(title="Training Agent", version="0.1.0")
 
     # Discover GPU and determine a stable agent id
     gpu = _discover_gpu(gpu_index)
@@ -312,14 +312,12 @@ def create_app(agent_id: Optional[str] = None, gpu_index: Optional[int] = None) 
     except Exception:
         pass
 
-    @app.on_event("startup")
-    async def _startup():
-        # Ensure DB is initialized and self-register this agent and its GPU
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        # Startup: Ensure DB is initialized and self-register this agent and its GPU
         init_db()
         db = SessionLocal()
         try:
-            # Upsert Agent with deterministic UUID
-            from dashboard import models
             agent_uuid = uuid.UUID(effective_agent_id)
             row = db.get(models.Agent, agent_uuid)
             if not row:
@@ -369,7 +367,9 @@ def create_app(agent_id: Optional[str] = None, gpu_index: Optional[int] = None) 
             gpu_row.last_seen_at = datetime.utcnow()
             db.add(gpu_row)
             db.commit()
-            print(f"[agent] Upserted GPU index={gpu_row.index} uuid={gpu_row.uuid} name={gpu_row.name} mem={gpu_row.total_mem_mb}MB")
+            print(
+                f"[agent] Upserted GPU index={gpu_row.index} uuid={gpu_row.uuid} name={gpu_row.name} mem={gpu_row.total_mem_mb}MB"
+            )
         finally:
             db.close()
 
@@ -377,36 +377,57 @@ def create_app(agent_id: Optional[str] = None, gpu_index: Optional[int] = None) 
         app.state.worker = asyncio.create_task(agent.run_forever())
 
         async def _heartbeat():
-            while True:
-                await asyncio.sleep(15)
-                db = SessionLocal()
-                try:
-                    a = db.get(models.Agent, uuid.UUID(effective_agent_id))
-                    if a:
-                        a.last_heartbeat_at = datetime.utcnow()
-                        db.add(a)
-                    g = (
-                        db.query(models.GPU)
-                        .filter(models.GPU.agent_id == uuid.UUID(effective_agent_id), models.GPU.index == int(gpu.get("index", 0)))
-                        .first()
-                    )
-                    if g:
-                        g.last_seen_at = datetime.utcnow()
-                        db.add(g)
-                    db.commit()
-                finally:
-                    db.close()
+            try:
+                while True:
+                    await asyncio.sleep(15)
+                    db_hb = SessionLocal()
+                    try:
+                        a = db_hb.get(models.Agent, uuid.UUID(effective_agent_id))
+                        if a:
+                            a.last_heartbeat_at = datetime.utcnow()
+                            db_hb.add(a)
+                        g = (
+                            db_hb.query(models.GPU)
+                            .filter(
+                                models.GPU.agent_id == uuid.UUID(effective_agent_id),
+                                models.GPU.index == int(gpu.get("index", 0)),
+                            )
+                            .first()
+                        )
+                        if g:
+                            g.last_seen_at = datetime.utcnow()
+                            db_hb.add(g)
+                        db_hb.commit()
+                    finally:
+                        db_hb.close()
+            except asyncio.CancelledError:
+                pass
+
         app.state.heartbeat = asyncio.create_task(_heartbeat())
 
-    @app.on_event("shutdown")
-    async def _shutdown():
-        agent.stop()
-        task = getattr(app.state, "worker", None)
-        if task:
-            task.cancel()
-        hb = getattr(app.state, "heartbeat", None)
-        if hb:
-            hb.cancel()
+        # Yield control to application
+        try:
+            yield
+        finally:
+            # Shutdown: stop agent and cancel tasks
+            agent.stop()
+            task = getattr(app.state, "worker", None)
+            if task:
+                task.cancel()
+                try:
+                    await task
+                except Exception:
+                    pass
+            hb = getattr(app.state, "heartbeat", None)
+            if hb:
+                hb.cancel()
+                try:
+                    await hb
+                except Exception:
+                    pass
+
+    # Build FastAPI app with lifespan handler
+    app = FastAPI(title="Training Agent", version="0.1.0", lifespan=lifespan)
 
     @app.get("/health")
     def health():
