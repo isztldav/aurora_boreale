@@ -1,0 +1,17 @@
+<table class="table">
+  <thead>
+    <tr><th>Name</th><th>Type</th><th>Enabled</th><th>Version</th><th>Created</th></tr>
+  </thead>
+  <tbody>
+  {% for a in augmentations %}
+    <tr>
+      <td>{{ a.name }}</td>
+      <td>{{ a.type }}</td>
+      <td>{{ 'Yes' if a.enabled else 'No' }}</td>
+      <td>{{ a.version }}</td>
+      <td>{{ a.created_at }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+

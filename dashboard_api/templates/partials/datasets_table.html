@@ -1,0 +1,15 @@
+<table class="table">
+  <thead>
+    <tr><th>Name</th><th>Root</th><th>Created</th></tr>
+  </thead>
+  <tbody>
+  {% for d in datasets %}
+    <tr>
+      <td>{{ d.name }}</td>
+      <td><code>{{ d.root_path }}</code></td>
+      <td>{{ d.created_at }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+

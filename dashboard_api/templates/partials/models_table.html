@@ -1,0 +1,16 @@
+<table class="table">
+  <thead>
+    <tr><th>Label</th><th>Checkpoint</th><th>Pretrained</th><th>Created</th></tr>
+  </thead>
+  <tbody>
+  {% for m in models %}
+    <tr>
+      <td>{{ m.label }}</td>
+      <td><code>{{ m.hf_checkpoint_id }}</code></td>
+      <td>{{ 'Yes' if m.default_pretrained else 'No' }}</td>
+      <td>{{ m.created_at }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+

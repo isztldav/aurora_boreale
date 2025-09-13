@@ -3,22 +3,24 @@
 {% block title %}Configs · Unified Dashboard{% endblock %}
 {% block crumb %}Configs{% endblock %}
 {% block project_content %}
-  <div class="card">
+<section>
+  <h2 class="muted">Configs</h2>
+  {% call ui.card('Create Config') %}
     <form id="builder" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <input type="hidden" name="project_id" value="{{ project_id }}" />
 
       <h3 class="grid-span">Basic</h3>
       <label class="field">
         <span>Name</span>
-        <input name="name" placeholder="My Config" required />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="name" placeholder="My Config" required />
       </label>
       <label class="field">
         <span>Dataset</span>
-        <select id="dataset_select"></select>
+        <select id="dataset_select" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700"></select>
       </label>
       <label class="field sm:col-span-2">
         <span>Dataset root (if not in list)</span>
-        <input name="root" placeholder="/datasets/path" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="root" placeholder="/datasets/path" />
       </label>
       <label class="field">
         <span>Model</span>
@@ -26,7 +28,7 @@
       </label>
       <label class="field">
         <span>Model flavour (override)</span>
-        <input name="model_flavour" placeholder="google/vit-base-patch16-224" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="model_flavour" placeholder="google/vit-base-patch16-224" />
       </label>
       <label class="field">
         <span>Loss</span>
@@ -45,31 +47,31 @@
       </label>
       <label class="field">
         <span>Learning rate</span>
-        <input name="lr" type="number" step="0.000001" value="0.001" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="lr" type="number" step="0.000001" value="0.001" />
       </label>
       <label class="field">
         <span>Weight decay</span>
-        <input name="weight_decay" type="number" step="0.0001" value="0.05" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="weight_decay" type="number" step="0.0001" value="0.05" />
       </label>
       <label class="field">
         <span>Grad clip (max norm)</span>
-        <input name="max_grad_norm" type="number" step="0.1" value="1.0" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="max_grad_norm" type="number" step="0.1" value="1.0" />
       </label>
       <label class="field">
         <span>Warmup ratio</span>
-        <input name="warmup_ratio" type="number" step="0.01" value="0.05" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="warmup_ratio" type="number" step="0.01" value="0.05" />
       </label>
       <label class="field">
         <span>Grad accum steps</span>
-        <input name="grad_accum_steps" type="number" step="1" value="1" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="grad_accum_steps" type="number" step="1" value="1" />
       </label>
       <label class="field">
         <span>Epochs</span>
-        <input name="epochs" type="number" step="1" value="10" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="epochs" type="number" step="1" value="10" />
       </label>
       <label class="field">
         <span>Seed</span>
-        <input name="seed" type="number" step="1" value="42" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="seed" type="number" step="1" value="42" />
       </label>
       <label class="field">
         <span>Autocast dtype</span>
@@ -83,15 +85,15 @@
       <h3 class="grid-span">Data loader</h3>
       <label class="field">
         <span>Batch size</span>
-        <input name="batch_size" type="number" step="1" value="256" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="batch_size" type="number" step="1" value="256" />
       </label>
       <label class="field">
         <span>Workers</span>
-        <input name="num_workers" type="number" step="1" value="4" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="num_workers" type="number" step="1" value="4" />
       </label>
       <label class="field">
         <span>Prefetch factor</span>
-        <input name="prefetch_factor" type="number" step="1" value="4" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="prefetch_factor" type="number" step="1" value="4" />
       </label>
       <label class="field">
         <span>Persistent workers</span>
@@ -99,21 +101,21 @@
       </label>
       <label class="field sm:col-span-2">
         <span>Max datapoints per class</span>
-        <input name="max_datapoints_per_class" type="number" step="1" value="10000" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="max_datapoints_per_class" type="number" step="1" value="10000" />
       </label>
 
       <h3 class="grid-span">Logging & Checkpoints</h3>
       <label class="field">
         <span>TB root</span>
-        <input name="tb_root" value="runs" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="tb_root" value="runs" />
       </label>
       <label class="field">
         <span>CKPT dir</span>
-        <input name="ckpt_dir" value="checkpoints" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="ckpt_dir" value="checkpoints" />
       </label>
       <label class="field">
         <span>Monitor metric</span>
-        <input name="monitor_metric" value="val_acc@1" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="monitor_metric" value="val_acc@1" />
       </label>
       <label class="field">
         <span>Monitor mode</span>
@@ -128,11 +130,11 @@
       </label>
       <label class="field">
         <span>Eval top-k (comma)</span>
-        <input name="eval_topk" value="3,5" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="eval_topk" value="3,5" />
       </label>
       <label class="field">
         <span>Model suffix</span>
-        <input name="model_suffix" value="" class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" />
+        <input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="model_suffix" value="" />
       </label>
       <label class="field">
         <span>Load pretrained</span>
@@ -142,20 +144,23 @@
         <span>Freeze backbone</span>
         <input name="freeze_backbone" type="checkbox" />
       </label>
+
+      <div class="sm:col-span-2 flex gap-2">
+        <button type="button" class="btn" id="preview_btn">Preview JSON</button>
+        <button type="submit" class="btn primary" id="create_btn">Create Config</button>
+      </div>
+
+      <details class="sm:col-span-2">
+        <summary>JSON Preview (editable)</summary>
+        <textarea id="json_preview" rows="12" class="mt-2 w-full rounded-lg border px-3 py-2"></textarea>
+      </details>
     </form>
-    <div class="sm:col-span-2 flex gap-2">
-      <button class="btn" id="preview_btn">Preview JSON</button>
-      <button class="btn btn-primary" id="create_btn">Create Config</button>
-    </div>
-    <details class="sm:col-span-2">
-      <summary>JSON Preview (editable)</summary>
-      <textarea id="json_preview" rows="12" class="mt-2 w-full rounded-lg border px-3 py-2"></textarea>
-    </details>
-  </div>
+  {% endcall %}
 
   {% call ui.card('Existing Configs') %}
     <table class="table" id="cfgTable"><thead><tr><th>Name</th><th>Version</th><th>Status</th><th>Created</th></tr></thead><tbody></tbody></table>
   {% endcall %}
+</section>
 {% endblock %}
 
 {% block scripts %}
