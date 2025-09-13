@@ -6,7 +6,7 @@ and to keep experiment-related string handling in one place.
 from __future__ import annotations
 
 import os
-from utils.config import TrainConfig
+from common.config import TrainConfig
 
 
 def sanitize_name(s: str) -> str:
@@ -40,4 +40,3 @@ def unique_run_name(root_dir: str, base: str) -> str:
         candidate = f"{base}-v{k}"
         k += 1
     return candidate
-

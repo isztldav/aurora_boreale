@@ -3,10 +3,10 @@ import argparse
 import json
 from typing import Any, Dict
 
-from training_configurations.examples import training_configurations
-from utils.experiments import make_run_base, unique_run_name, sanitize_name
-from utils.runner import run_experiment
-from utils.config import TrainConfig
+from configs.examples import training_configurations
+from common.experiments import make_run_base, unique_run_name, sanitize_name
+from common.runner import run_experiment
+from common.config import TrainConfig
 
 
 def _run_single(cfg: TrainConfig) -> None:

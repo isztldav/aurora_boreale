@@ -1,0 +1,82 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    container_name: dashboard-db
+    environment:
+      POSTGRES_USER: dashboard
+      POSTGRES_PASSWORD: dashboard
+      POSTGRES_DB: dashboard
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  web:
+    image: python:3.11-slim
+    container_name: dashboard-web
+    working_dir: /app
+    # Mount the app source and a shared logs volume (TensorBoard runs)
+    volumes:
+      - ./:/app
+      - shared_logs:/app/runs
+    environment:
+      # Point the app to Postgres in the internal network
+      DASHBOARD_DB_URL: postgresql+psycopg2://dashboard:dashboard@db:5432/dashboard
+      # Optional: tune TensorBoard mount lifecycle in the web app
+      TB_IDLE_TIMEOUT: "600"       # seconds
+      TB_SWEEP_INTERVAL: "30"      # seconds
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: /app/src
+    command: >
+      bash -lc "pip install --no-cache-dir fastapi 'uvicorn[standard]' sqlalchemy pydantic tensorboard psycopg2-binary jinja2 starlette && python run_dashboard.py"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    networks:
+      - internal
+
+  agent:
+    # GPU-enabled base with PyTorch + CUDA already installed
+    image: pytorch/pytorch:2.3.1-cuda12.1-cudnn8-runtime
+    container_name: training-agent
+    working_dir: /app
+    # Mount the app source and the same shared logs volume for writing TB logs
+    volumes:
+      - ./:/app
+      - shared_logs:/app/runs
+    environment:
+      DASHBOARD_DB_URL: postgresql+psycopg2://dashboard:dashboard@db:5432/dashboard
+      NVIDIA_VISIBLE_DEVICES: all
+      PYTHONUNBUFFERED: "1"
+      # Set a default agent ID; override by `AGENT_ID=<uuid> docker compose up`
+      AGENT_ID: local-agent-1
+      PYTHONPATH: /app/src
+    command: >
+      bash -lc "pip install --no-cache-dir fastapi uvicorn sqlalchemy pydantic tensorboard transformers psycopg2-binary && python -m agent.server --agent-id $$AGENT_ID"
+    depends_on:
+      db:
+        condition: service_healthy
+    # Request all GPUs from the host (Compose v2+)
+    device_requests:
+      - driver: nvidia
+        count: all
+        capabilities: [gpu]
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  pgdata:
+  shared_logs:

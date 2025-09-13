@@ -11,10 +11,10 @@ from typing import Optional
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from dashboard_api.db import SessionLocal, init_db
-from dashboard_api import models
-from utils.config import TrainConfig
-from utils import runner as train_runner
+from dashboard.db import SessionLocal, init_db
+from dashboard import models
+from common.config import TrainConfig
+from common import runner as train_runner
 
 
 class StatusOut(BaseModel):
@@ -276,4 +276,3 @@ if __name__ == "__main__":
 
     # Allow overriding DB via env var DASHBOARD_DB_URL
     uvicorn.run(create_app(args.agent_id), host=args.host, port=args.port)
-

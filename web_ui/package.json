@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build:css": "tailwindcss -i src/tailwind.css -o ../dashboard_api/static/tw.css --minify",
-    "watch:css": "tailwindcss -i src/tailwind.css -o ../dashboard_api/static/tw.css --watch"
+    "build:css": "tailwindcss -i src/tailwind.css -o ../src/dashboard/static/tw.css --minify",
+    "watch:css": "tailwindcss -i src/tailwind.css -o ../src/dashboard/static/tw.css --watch"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.20",

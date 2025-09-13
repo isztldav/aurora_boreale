@@ -88,7 +88,7 @@ Tailwind UI build (optional, recommended)
 ~~~bash
 cd web_ui
 npm install  # requires network
-npm run build:css  # outputs ../dashboard_api/static/tw.css
+npm run build:css  # outputs ../src/dashboard/static/tw.css
 ~~~
 
 - During development you can watch for changes:

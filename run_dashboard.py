@@ -7,7 +7,7 @@ if __name__ == "__main__":
     level = logging.DEBUG if os.getenv("DASHBOARD_DEBUG") else logging.INFO
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
     uvicorn.run(
-        "dashboard_api.app:app",
+        "src.dashboard.app:app",
         host="0.0.0.0",
         port=8000,
         reload=False,

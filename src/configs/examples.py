@@ -5,7 +5,7 @@ pick them up and run each sequentially.
 """
 from __future__ import annotations
 
-from utils.config import TrainConfig
+from common.config import TrainConfig
 import torch
 
 # Dataset root (update to your local path if needed)

@@ -13,11 +13,11 @@ from torchmetrics.classification import (
     CohenKappa,
     Recall,
 )
-from utils.visuals import plot_confusion_matrix, plot_roc_micro, save_figure
+from common.visuals import plot_confusion_matrix, plot_roc_micro, save_figure
 from tqdm.auto import tqdm
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
-from utils.cuda_helper import CUDAPrefetchLoader
+from common.cuda_helper import CUDAPrefetchLoader
 
 
 def train_one_epoch(

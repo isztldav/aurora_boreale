@@ -3,7 +3,7 @@ const forms = require('@tailwindcss/forms');
 
 module.exports = {
   content: [
-    "../dashboard_api/templates/**/*.html",
+    "../src/dashboard/templates/**/*.html",
   ],
   darkMode: 'class',
   theme: {
