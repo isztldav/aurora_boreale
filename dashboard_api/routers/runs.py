@@ -1,11 +1,15 @@
 from datetime import datetime
+import os
 from fastapi import APIRouter, Depends, HTTPException, Query
+from urllib import request as _urlreq
+import json as _json
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from .. import models
 from ..schemas import RunCreate, RunOut
 from ..utils import resolve_run_name
+from ..tensorboard import get_or_start_tensorboard
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -148,3 +152,64 @@ def finish_run(run_id: str, success: bool = True, db: Session = Depends(get_db))
 def get_logs(run_id: str, tail: int = 200):
     # Placeholder: logs not implemented yet
     return {"lines": ["[stub] logs are not implemented in MVP"], "truncated": False}
+
+
+@router.get("/{run_id}/tensorboard")
+def tensorboard_url(run_id: str, db: Session = Depends(get_db)):
+    """Return (and if needed start) a TensorBoard server URL for this run.
+
+    The effective logdir is computed as ``(run.log_dir or 'runs')/run.name``.
+    """
+    run = db.query(models.Run).get(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Not found")
+    root = run.log_dir or "runs"
+    logdir = os.path.join(root, run.name)
+    url = get_or_start_tensorboard(str(run.id), logdir)
+    return {"url": url}
+
+
+def _agent_base_url(db: Session, run: models.Run) -> str:
+    if not run.agent_id:
+        raise HTTPException(status_code=400, detail="Run has no assigned agent")
+    agent = db.query(models.Agent).get(run.agent_id)
+    if not agent or not agent.host:
+        raise HTTPException(status_code=400, detail="Agent host unknown")
+    host = agent.host
+    # Default agent server port 7070 unless host already includes port
+    if ":" in host:
+        base = f"http://{host}"
+    else:
+        base = f"http://{host}:7070"
+    return base
+
+
+@router.get("/{run_id}/status")
+def run_agent_status(run_id: str, db: Session = Depends(get_db)):
+    run = db.query(models.Run).get(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Not found")
+    base = _agent_base_url(db, run)
+    url = f"{base}/status"
+    try:
+        with _urlreq.urlopen(url, timeout=2.0) as resp:
+            data = resp.read().decode("utf-8")
+            return _json.loads(data)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Agent unreachable: {e}")
+
+
+@router.post("/{run_id}/halt")
+def run_agent_halt(run_id: str, db: Session = Depends(get_db)):
+    run = db.query(models.Run).get(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Not found")
+    base = _agent_base_url(db, run)
+    url = f"{base}/halt"
+    try:
+        req = _urlreq.Request(url, method="POST")
+        with _urlreq.urlopen(req, timeout=2.0) as resp:
+            data = resp.read().decode("utf-8")
+            return _json.loads(data)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Agent unreachable: {e}")

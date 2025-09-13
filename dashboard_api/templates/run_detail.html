@@ -13,8 +13,22 @@
     <pre class="mt-3" id="meta"></pre>
   {% endcall %}
 
+  {% call ui.card('Agent Status') %}
+    <div id="agent_status">Loading…</div>
+    <div class="mt-3">
+      <button class="btn btn-danger" id="halt_btn">Halt Current Training</button>
+    </div>
+  {% endcall %}
+
   {% call ui.card('Logs') %}
     <pre id="logs"></pre>
+  {% endcall %}
+
+  {% call ui.card('TensorBoard') %}
+    <div class="h-[70vh] w-full border rounded-md overflow-hidden bg-white dark:bg-slate-900">
+      <div id="tb_placeholder" class="p-3 text-sm text-slate-600 dark:text-slate-300">Starting TensorBoard for this run…</div>
+      <iframe id="tb_frame" class="hidden h-full w-full" src="" referrerpolicy="no-referrer"></iframe>
+    </div>
   {% endcall %}
 <script>
 async function post(url){ const r = await fetch(url, {method:'POST'}); if(r.ok) toast('Updated'); await refresh(); }
@@ -22,10 +36,45 @@ async function refresh(){
   const res = await fetch('/api/v1/runs/{{ run_id }}');
   const r = await res.json();
   document.getElementById('meta').textContent = JSON.stringify(r, null, 2);
+  // Agent status
+  try {
+    const sr = await fetch('/api/v1/runs/{{ run_id }}/status');
+    if (sr.ok) {
+      const s = await sr.json();
+      const eta = (s.eta_seconds!=null)? (Math.round(s.eta_seconds)) : null;
+      const el = (s.elapsed_seconds!=null)? (Math.round(s.elapsed_seconds)) : null;
+      document.getElementById('agent_status').textContent =
+        s.state==='running'
+          ? `Running — epoch ${s.epoch+1}/${s.total_epochs} · elapsed ${el}s · ETA ${eta}s`
+          : 'Idle';
+    } else {
+      document.getElementById('agent_status').textContent = 'Agent unreachable';
+    }
+  } catch (e) {
+    document.getElementById('agent_status').textContent = 'Agent unreachable';
+  }
   const lr = await fetch('/api/v1/runs/{{ run_id }}/logs?tail=200');
   const logs = await lr.json();
   document.getElementById('logs').textContent = (logs.lines||[]).join('\n');
+  // Ensure TensorBoard is available and embed it
+  try {
+    const tr = await fetch('/api/v1/runs/{{ run_id }}/tensorboard');
+    if (tr.ok) {
+      const data = await tr.json();
+      const url = data.url.endsWith('/') ? data.url : data.url + '/';
+      const frame = document.getElementById('tb_frame');
+      const ph = document.getElementById('tb_placeholder');
+      frame.src = url + '#scalars';
+      frame.classList.remove('hidden');
+      if (ph) ph.remove();
+    }
+  } catch (e) { /* ignore */ }
 }
 refresh();
+setInterval(refresh, 5000);
+document.getElementById('halt_btn').addEventListener('click', async ()=>{
+  const r = await fetch('/api/v1/runs/{{ run_id }}/halt', {method:'POST'});
+  if(r.ok) toast('Halt requested');
+});
 </script>
 {% endblock %}

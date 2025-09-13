@@ -84,7 +84,18 @@ def create_app() -> FastAPI:
 
     @app.get("/web/runs/{run_id}", response_class=HTMLResponse)
     async def web_run_detail(run_id: str, request: Request):
-        return templates.TemplateResponse("run_detail.html", {"request": request, "run_id": run_id})
+        db = SessionLocal()
+        try:
+            run = db.query(models.Run).get(run_id)
+            if not run:
+                return RedirectResponse("/web/projects")
+            project = _get_project(str(run.project_id))
+            return templates.TemplateResponse(
+                "run_detail.html",
+                {"request": request, "run_id": run_id, "project": project, "project_id": str(project.id) if project else None},
+            )
+        finally:
+            db.close()
 
     @app.get("/web/agents", response_class=HTMLResponse)
     async def web_agents(request: Request):

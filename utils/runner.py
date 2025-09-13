@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import math
 import os
-from typing import Optional
+from typing import Optional, Callable
+import time
 
 import numpy as np
 import torch
@@ -64,7 +65,11 @@ def _perform_checkpoint(
     return best_val, is_best
 
 
-def run_experiment(cfg: TrainConfig) -> str:
+def run_experiment(
+    cfg: TrainConfig,
+    progress_cb: Optional[Callable[[int, int, float, Optional[str]], None]] = None,
+    should_stop: Optional[Callable[[], bool]] = None,
+) -> str:
     """Run a full training experiment.
 
     Steps:
@@ -155,6 +160,9 @@ def run_experiment(cfg: TrainConfig) -> str:
     best_epoch_so_far: Optional[int] = None
     best_acc_at_best: Optional[float] = None
     for epoch in range(cfg.epochs):
+        if should_stop and should_stop():
+            break
+        _epoch_start = time.time()
         steps_per_epoch = len(train_loader)
 
         train_metrics = train_eval.train_one_epoch(
@@ -228,4 +236,13 @@ def run_experiment(cfg: TrainConfig) -> str:
         if writer and best_epoch_so_far is not None and best_acc_at_best is not None:
             writer.add_scalar("best/epoch", best_epoch_so_far, epoch)
             writer.add_scalar("best/acc@1", best_acc_at_best, epoch)
+        # Progress callback with epoch duration
+        if progress_cb:
+            epoch_dur = time.time() - _epoch_start
+            try:
+                progress_cb(epoch, cfg.epochs, epoch_dur, tb_log_dir)
+            except Exception:
+                pass
+        if should_stop and should_stop():
+            break
     return tb_log_dir
