@@ -218,4 +218,4 @@ __marimo__/
 # experiments
 experiments/
 
-training_configurations/examples.py
+#training_configurations/examples.py

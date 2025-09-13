@@ -25,6 +25,7 @@ from utils.model import build_model
 from utils.seed import get_device, set_seed
 from utils.tb import create_tb_writer, log_confusion_matrix_table
 from utils.transforms import build_transforms
+from utils.gpu_transforms import build_gpu_train_augment
 import utils.train_eval as train_eval
 
 
@@ -89,6 +90,9 @@ def run_experiment(cfg: TrainConfig) -> str:
     val_loader = CUDAPrefetchLoader(val_loader)
     if test_loader:
         test_loader = CUDAPrefetchLoader(test_loader)  # noqa: F841
+
+    # Build GPU-batched training augmentations (size-preserving, geometric only)
+    train_batch_tf = None #build_gpu_train_augment().to(device=device)
 
     label2id, id2label = build_label_maps(train_loader.loader.dataset)  # type: ignore[attr-defined]
     num_labels = len(label2id)
@@ -167,6 +171,7 @@ def run_experiment(cfg: TrainConfig) -> str:
             max_grad_norm=cfg.max_grad_norm,
             grad_accum_steps=cfg.grad_accum_steps,
             autocast_dtype=cfg.autocast_dtype,
+            batch_transform=train_batch_tf,
         )
         global_step += steps_per_epoch
 

@@ -34,6 +34,7 @@ def train_one_epoch(
     global_step_start: int = 0,
     max_grad_norm: Optional[float] = None,
     grad_accum_steps: int = 1,
+    batch_transform: Optional[torch.nn.Module] = None,
     
 )-> Dict[str, float]:
     """Train one full epoch.
@@ -55,6 +56,8 @@ def train_one_epoch(
         expected = expected.to(device, non_blocking=True)
 
         with torch.autocast(device_type="cuda", dtype=autocast_dtype, enabled=torch.cuda.is_available()):
+            if batch_transform is not None:
+                input = batch_transform(input)
             logits = model(input).logits
             loss = loss_fn(logits, expected)
         
