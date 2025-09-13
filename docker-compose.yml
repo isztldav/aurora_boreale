@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:15
@@ -35,7 +33,7 @@ services:
       PYTHONUNBUFFERED: "1"
       PYTHONPATH: /app/src
     command: >
-      bash -lc "pip install --no-cache-dir fastapi 'uvicorn[standard]' sqlalchemy pydantic tensorboard psycopg2-binary jinja2 starlette && python run_dashboard.py"
+      bash -lc "pip install --no-cache-dir -r src/dashboard/requirements.txt && python run_dashboard.py"
     depends_on:
       db:
         condition: service_healthy
@@ -45,8 +43,8 @@ services:
       - internal
 
   agent:
-    # GPU-enabled base with PyTorch + CUDA already installed
-    image: pytorch/pytorch:2.3.1-cuda12.1-cudnn8-runtime
+    # Base Python image; PyTorch CUDA 12.9 wheels are installed from requirements
+    image: python:3.11-slim
     container_name: training-agent
     working_dir: /app
     # Mount the app source and the same shared logs volume for writing TB logs
@@ -57,19 +55,23 @@ services:
       DASHBOARD_DB_URL: postgresql+psycopg2://dashboard:dashboard@db:5432/dashboard
       NVIDIA_VISIBLE_DEVICES: all
       PYTHONUNBUFFERED: "1"
-      # Set a default agent ID; override by `AGENT_ID=<uuid> docker compose up`
-      AGENT_ID: local-agent-1
+      # GPU index this container will serve (one agent per GPU)
+      GPU_INDEX: "0"
       PYTHONPATH: /app/src
     command: >
-      bash -lc "pip install --no-cache-dir fastapi uvicorn sqlalchemy pydantic tensorboard transformers psycopg2-binary && python -m agent.server --agent-id $$AGENT_ID"
+      bash -lc "pip install --no-cache-dir -r src/agent/requirements.txt && python -m agent.server --gpu-index $$GPU_INDEX"
     depends_on:
       db:
         condition: service_healthy
     # Request all GPUs from the host (Compose v2+)
-    device_requests:
-      - driver: nvidia
-        count: all
-        capabilities: [gpu]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+#              count: 1
+              device_ids: ["${GPU_INDEX:-0}"]
+              capabilities: [gpu]
     networks:
       - internal
 

@@ -9,6 +9,9 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import FastAPI
+import socket
+import uuid
+from typing import Dict
 from pydantic import BaseModel
 
 from dashboard.db import SessionLocal, init_db
@@ -26,6 +29,60 @@ class StatusOut(BaseModel):
     started_at: Optional[str] = None
     elapsed_seconds: Optional[float] = None
     eta_seconds: Optional[float] = None
+
+
+def _discover_gpu(index: int | None = None) -> Dict:
+    info: Dict = {
+        "index": index if index is not None else 0,
+        "uuid": None,
+        "name": None,
+        "total_mem_mb": None,
+        "compute_capability": None,
+    }
+    try:
+        import torch
+        if torch.cuda.is_available():
+            device_count = torch.cuda.device_count()
+            idx = info["index"]
+            if idx < 0 or idx >= device_count:
+                idx = 0
+            props = torch.cuda.get_device_properties(idx)
+            info["index"] = idx
+            info["name"] = getattr(props, "name", None)
+            # total_memory is in bytes
+            total = getattr(props, "total_memory", None)
+            if total is not None:
+                info["total_mem_mb"] = int(total // (1024 * 1024))
+            major = getattr(props, "major", None)
+            minor = getattr(props, "minor", None)
+            if major is not None and minor is not None:
+                info["compute_capability"] = f"{major}.{minor}"
+            # Try to get a stable hardware UUID
+            # PyTorch exposes uuid in newer versions
+            u = getattr(props, "uuid", None)
+            if u:
+                info["uuid"] = str(u)
+            else:
+                # Fallback to nvidia-smi query
+                import subprocess
+                try:
+                    out = subprocess.check_output([
+                        "nvidia-smi",
+                        "--query-gpu=uuid",
+                        "--format=csv,noheader",
+                        f"-i={idx}",
+                    ], stderr=subprocess.DEVNULL, text=True, timeout=2.0)
+                    uu = out.strip().splitlines()[0].strip()
+                    info["uuid"] = uu if uu else None
+                except Exception:
+                    # As a last resort, build something deterministic from name+cc+mem
+                    if info["name"] and info["compute_capability"] and info["total_mem_mb"]:
+                        raw = f"{info['name']}|{info['compute_capability']}|{info['total_mem_mb']}"
+                        info["uuid"] = f"FAKEGPU-{uuid.uuid5(uuid.NAMESPACE_DNS, raw)}"
+    except Exception:
+        # No torch or no cuda; leave defaults
+        pass
+    return info
 
 
 class RunnerAgent:
@@ -80,7 +137,7 @@ class RunnerAgent:
         # Persist epoch to DB for visibility
         db = SessionLocal()
         try:
-            run = db.query(models.Run).get(self._current_run_id)
+            run = db.get(models.Run, self._current_run_id)
             if run:
                 run.epoch = int(epoch) + 1  # human-friendly
                 db.add(run)
@@ -133,7 +190,7 @@ class RunnerAgent:
         # Build TrainConfig from stored config
         db = SessionLocal()
         try:
-            cfg_row = db.query(models.TrainConfigModel).get(run.config_id)
+            cfg_row = db.get(models.TrainConfigModel, run.config_id)
             if not cfg_row:
                 raise RuntimeError("Train config not found")
             cfg_dict = dict(cfg_row.config_json)
@@ -175,7 +232,7 @@ class RunnerAgent:
             # Set final state based on halt flag
             db2 = SessionLocal()
             try:
-                r = db2.query(models.Run).get(run.id)
+                r = db2.get(models.Run, run.id)
                 if r:
                     if self._halt_requested.is_set():
                         r.state = "canceled"
@@ -191,7 +248,7 @@ class RunnerAgent:
         except Exception as e:
             db3 = SessionLocal()
             try:
-                r = db3.query(models.Run).get(run.id)
+                r = db3.get(models.Run, run.id)
                 if r:
                     r.state = "failed"
                     r.finished_at = datetime.utcnow()
@@ -233,13 +290,113 @@ class RunnerAgent:
         self._stop_event.set()
 
 
-def create_app(agent_id: str) -> FastAPI:
+def create_app(agent_id: Optional[str] = None, gpu_index: Optional[int] = None) -> FastAPI:
     app = FastAPI(title="Training Agent", version="0.1.0")
-    agent = RunnerAgent(agent_id=agent_id)
+
+    # Discover GPU and determine a stable agent id
+    gpu = _discover_gpu(gpu_index)
+    host = socket.gethostname()
+    # Derive a stable UUID from the GPU hardware UUID when available
+    derived_uuid = None
+    if gpu.get("uuid"):
+        derived_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"gpu:{gpu['uuid']}")
+    else:
+        derived_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"host:{host}:gpu-idx:{gpu.get('index', 0)}")
+
+    # Prefer provided agent_id; otherwise use derived
+    effective_agent_id = agent_id or str(derived_uuid)
+    agent = RunnerAgent(agent_id=effective_agent_id)
+    # Constrain this process to its GPU to keep agents atomic
+    try:
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(int(gpu.get("index", 0)))
+    except Exception:
+        pass
 
     @app.on_event("startup")
     async def _startup():
+        # Ensure DB is initialized and self-register this agent and its GPU
+        init_db()
+        db = SessionLocal()
+        try:
+            # Upsert Agent with deterministic UUID
+            from dashboard import models
+            agent_uuid = uuid.UUID(effective_agent_id)
+            row = db.get(models.Agent, agent_uuid)
+            if not row:
+                row = models.Agent(
+                    id=agent_uuid,
+                    name=f"gpu:{gpu.get('uuid') or 'idx-'+str(gpu.get('index',0))}",
+                    host=host,
+                    labels={
+                        "gpu_index": gpu.get("index"),
+                        "gpu_uuid": gpu.get("uuid"),
+                        "gpu_name": gpu.get("name"),
+                        "compute_capability": gpu.get("compute_capability"),
+                    },
+                )
+            else:
+                # Update host/labels if changed
+                labels = row.labels or {}
+                labels.update({
+                    "gpu_index": gpu.get("index"),
+                    "gpu_uuid": gpu.get("uuid"),
+                    "gpu_name": gpu.get("name"),
+                    "compute_capability": gpu.get("compute_capability"),
+                })
+                row.name = row.name or f"gpu:{gpu.get('uuid') or 'idx-'+str(gpu.get('index',0))}"
+                row.host = host
+                row.labels = labels
+            row.last_heartbeat_at = datetime.utcnow()
+            db.add(row)
+            db.commit()
+            print(f"[agent] Registered agent id={row.id} name={row.name} host={row.host}")
+
+            # Upsert GPU entry for this agent
+            gpu_row = (
+                db.query(models.GPU)
+                .filter(models.GPU.agent_id == row.id, models.GPU.index == int(gpu.get("index", 0)))
+                .first()
+            )
+            if not gpu_row:
+                gpu_row = models.GPU(
+                    agent_id=row.id,
+                    index=int(gpu.get("index", 0)),
+                )
+            gpu_row.uuid = gpu.get("uuid")
+            gpu_row.name = gpu.get("name")
+            gpu_row.total_mem_mb = gpu.get("total_mem_mb")
+            gpu_row.compute_capability = gpu.get("compute_capability")
+            gpu_row.last_seen_at = datetime.utcnow()
+            db.add(gpu_row)
+            db.commit()
+            print(f"[agent] Upserted GPU index={gpu_row.index} uuid={gpu_row.uuid} name={gpu_row.name} mem={gpu_row.total_mem_mb}MB")
+        finally:
+            db.close()
+
+        # Start worker loop and heartbeat task
         app.state.worker = asyncio.create_task(agent.run_forever())
+
+        async def _heartbeat():
+            while True:
+                await asyncio.sleep(15)
+                db = SessionLocal()
+                try:
+                    a = db.get(models.Agent, uuid.UUID(effective_agent_id))
+                    if a:
+                        a.last_heartbeat_at = datetime.utcnow()
+                        db.add(a)
+                    g = (
+                        db.query(models.GPU)
+                        .filter(models.GPU.agent_id == uuid.UUID(effective_agent_id), models.GPU.index == int(gpu.get("index", 0)))
+                        .first()
+                    )
+                    if g:
+                        g.last_seen_at = datetime.utcnow()
+                        db.add(g)
+                    db.commit()
+                finally:
+                    db.close()
+        app.state.heartbeat = asyncio.create_task(_heartbeat())
 
     @app.on_event("shutdown")
     async def _shutdown():
@@ -247,6 +404,9 @@ def create_app(agent_id: str) -> FastAPI:
         task = getattr(app.state, "worker", None)
         if task:
             task.cancel()
+        hb = getattr(app.state, "heartbeat", None)
+        if hb:
+            hb.cancel()
 
     @app.get("/health")
     def health():
@@ -269,10 +429,11 @@ if __name__ == "__main__":
     import uvicorn
 
     parser = argparse.ArgumentParser(description="Training agent server")
-    parser.add_argument("--agent-id", required=True, help="Agent UUID to serve jobs for")
+    parser.add_argument("--agent-id", required=False, help="Agent UUID to serve jobs for (defaults to GPU-derived)")
+    parser.add_argument("--gpu-index", type=int, default=None, help="GPU index this agent is bound to")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=7070)
     args = parser.parse_args()
 
     # Allow overriding DB via env var DASHBOARD_DB_URL
-    uvicorn.run(create_app(args.agent_id), host=args.host, port=args.port)
+    uvicorn.run(create_app(args.agent_id, args.gpu_index), host=args.host, port=args.port)
