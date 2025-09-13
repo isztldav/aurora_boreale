@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% import "components/macros.html" as ui %}
+{% block title %}Augmentations · Unified Dashboard{% endblock %}
+{% block content %}
+<section>
+  <h2 class="muted">Augmentations</h2>
+  {% call ui.card('Add Augmentation') %}
+    <form id="create-aug" class="grid resp">
+      <label class="field"><span>Name</span><input name="name" placeholder="Name" required /></label>
+      <label class="field"><span>Type</span><select name="type"><option value="cpu">cpu</option><option value="gpu">gpu</option></select></label>
+      <label class="field grid-span"><span>Params (JSON)</span><textarea name="params" placeholder='{"flip": true, "color_jitter": {"p": 0.2}}' rows="4" style="width:100%"></textarea></label>
+      <label class="field"><span>Enabled</span><input type="checkbox" name="enabled" checked /></label>
+      <div><button class="btn primary" type="submit">Add</button></div>
+    </form>
+  {% endcall %}
+  {% call ui.card('Augmentations') %}
+    <table class="table" id="augTable"><thead><tr><th>Name</th><th>Type</th><th>Enabled</th><th></th></tr></thead><tbody></tbody></table>
+  {% endcall %}
+</section>
+<script>
+async function fetchAugs(){
+  const res = await fetch('/api/v1/projects/{{ project_id }}/augmentations');
+  const data = await res.json();
+  const tbody = document.querySelector('#augTable tbody');
+  tbody.innerHTML='';
+  data.forEach(a=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${a.name}</td><td>${a.type}</td><td>${a.enabled?"Yes":"No"}</td><td><button class="btn" onclick=\"toggle('${a.id}', ${!a.enabled})\">${a.enabled?'Disable':'Enable'}</button> <button class=\"btn danger\" onclick=\"delAug('${a.id}')\">Delete</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+async function toggle(id, enabled){
+  await fetch(`/api/v1/projects/augmentations/${id}/toggle?enabled=${enabled}`, {method:'POST'});
+  fetchAugs();
+}
+async function delAug(id){
+  await fetch(`/api/v1/projects/augmentations/${id}`, {method:'DELETE'});
+  fetchAugs();
+}
+document.getElementById('create-aug').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const payload = {
+    name: fd.get('name'),
+    type: fd.get('type'),
+    params: fd.get('params') ? JSON.parse(fd.get('params')) : null,
+    enabled: fd.get('enabled') === 'on'
+  };
+  const r = await fetch('/api/v1/projects/{{ project_id }}/augmentations', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+  if(r.ok){ e.target.reset(); toast('Augmentation added'); fetchAugs(); }
+});
+fetchAugs();
+</script>
+{% endblock %}

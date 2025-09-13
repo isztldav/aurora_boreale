@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% import "components/macros.html" as ui %}
+{% block title %}Runs · Unified Dashboard{% endblock %}
+{% block content %}
+  {% call ui.card('Queue Run') %}
+    <div class="grid resp">
+      <label class="field"><span>Config</span><select id="config_id"></select></label>
+      <label class="field"><span>Agent</span><select id="agent_id"></select></label>
+      <label class="field"><span>GPU indices</span><input id="gpu_indices" placeholder="e.g., 0 or 0,1" /></label>
+      <div><button class="btn primary" id="queue_run">Queue Run</button></div>
+    </div>
+  {% endcall %}
+
+  {% call ui.card('Existing Runs') %}
+    <table class="table" id="runsTable"><thead><tr><th>Name</th><th>State</th><th>Agent</th><th>Created</th></tr></thead><tbody></tbody></table>
+  {% endcall %}
+
+<script>
+async function fetchConfigs(){
+  const res = await fetch('/api/v1/configs/project/{{ project_id }}');
+  const data = await res.json();
+  const sel = document.getElementById('config_id');
+  sel.innerHTML='';
+  data.forEach(c=>{
+    const opt = document.createElement('option');
+    opt.value=c.id; opt.textContent=`${c.name} v${c.version}`; sel.appendChild(opt);
+  });
+}
+async function fetchAgents(){
+  const res = await fetch('/api/v1/agents');
+  const data = await res.json();
+  const sel = document.getElementById('agent_id');
+  sel.innerHTML='<option value="">(none)</option>';
+  data.forEach(a=>{
+    const opt = document.createElement('option');
+    opt.value=a.id; opt.textContent=a.name; sel.appendChild(opt);
+  });
+}
+async function fetchRuns(){
+  const res = await fetch('/api/v1/runs?project_id={{ project_id }}');
+  const data = await res.json();
+  const tbody = document.querySelector('#runsTable tbody');
+  tbody.innerHTML='';
+  data.forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><a href="/web/runs/${r.id}">${r.name}</a></td><td><span class="status dot ${r.state}">${r.state}</span></td><td>${r.agent_id? r.agent_id : ''}</td><td>${new Date(r.created_at).toLocaleString()}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+document.getElementById('queue_run').addEventListener('click', async ()=>{
+  const config = document.getElementById('config_id').value;
+  const agent = document.getElementById('agent_id').value || null;
+  const gpus = document.getElementById('gpu_indices').value.trim();
+  const payload = {
+    agent_id: agent,
+    gpu_indices: gpus ? gpus.split(',').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)) : []
+  };
+  const res = await fetch(`/api/v1/runs/from-config/${config}`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+  if(res.ok){ toast('Run queued'); fetchRuns(); }
+});
+fetchConfigs();
+fetchAgents();
+fetchRuns();
+</script>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% import "components/macros.html" as ui %}
+{% block title %}Project · Unified Dashboard{% endblock %}
+{% block content %}
+  {% call ui.card('Project') %}
+    <div class="grid resp">
+      <a class="btn" href="/web/projects/{{ project_id }}/configs">⚙️ Configs</a>
+      <a class="btn" href="/web/projects/{{ project_id }}/runs">🚀 Runs</a>
+      <a class="btn" href="/web/projects/{{ project_id }}/datasets">🗂️ Datasets</a>
+      <a class="btn" href="/web/projects/{{ project_id }}/models">🧠 Models</a>
+      <a class="btn" href="/web/projects/{{ project_id }}/augmentations">🎛️ Augmentations</a>
+    </div>
+  {% endcall %}
+{% endblock %}

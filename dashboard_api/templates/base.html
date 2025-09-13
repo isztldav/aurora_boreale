@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Unified Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="/static/modern.css" />
+    <script defer src="/static/app.js"></script>
+  </head>
+  <body class="theme-auto">
+    <header class="topbar">
+      <div class="container row between middle gap-2">
+        <div class="row middle gap-1">
+          <a class="brand" href="/web/projects">UTP</a>
+          <span class="muted">Unified Training Platform</span>
+        </div>
+        <nav class="row middle gap-2">
+          <a class="nav-link" data-nav href="/web/projects">Projects</a>
+          <a class="nav-link" data-nav href="/web/agents">Agents</a>
+          <button id="themeToggle" class="btn ghost" title="Toggle theme">🌓</button>
+        </nav>
+      </div>
+    </header>
+    <main class="container pad-3">
+      {% block content %}{% endblock %}
+    </main>
+    <div id="toast" class="toast" hidden></div>
+    {% block scripts %}{% endblock %}
+  </body>
+  {% include "components/macros.html" %}
+</html>

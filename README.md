@@ -70,6 +70,35 @@ python main.py
 tensorboard --logdir experiments/logs
 ~~~
 
+### Dashboard (MVP)
+- The web dashboard is a minimal FastAPI app to manage projects, configs, agents/GPUs and to queue runs (no Docker/agent execution yet).
+- It uses SQLite by default (`DASHBOARD_DB_URL` can point to Postgres later).
+
+Run the dashboard locally:
+
+~~~bash
+pip install fastapi "uvicorn[standard]" sqlalchemy pydantic
+python run_dashboard.py
+# open http://localhost:8000/web/projects
+~~~
+
+Endpoints (selection):
+- `GET/POST /api/v1/projects` — list/create projects
+- `GET /api/v1/configs/project/{project_id}` — list configs for project
+- `POST /api/v1/configs` — create a config (payload mirrors utils.config.TrainConfig fields)
+- `POST /api/v1/runs/from-config/{config_id}` — queue a run (creates run + job rows)
+- `GET /api/v1/agents` — list agents; `POST /api/v1/agents` — create agent; `POST /api/v1/agents/gpus` — add GPU to agent
+
+UI Pages (simple Jinja templates):
+- `/web/projects` → projects list and create
+- `/web/projects/{id}/configs` → configs list and create (paste JSON)
+- `/web/projects/{id}/runs` → queue runs; inspect existing runs
+- `/web/runs/{run_id}` → run detail, simple state controls and logs placeholder
+- `/web/agents` → agents and GPU inventory management (manual for now)
+
+Notes:
+- No scheduler, Docker, or real log/metrics streaming is implemented yet per requirements_v_1.md scope. The API records queued jobs and run states for now.
+
 
 ## How Experiments Are Structured
 - Declare a list named training_configurations in training_configurations/examples.py.
@@ -159,4 +188,3 @@ Example: configs in training_configurations/examples.py generate comparable runs
 
 ## License
 No license file is included in this repository. Use at your discretion or add a license appropriate for your project.
-

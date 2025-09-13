@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% import "components/macros.html" as ui %}
+{% block title %}Agents · Unified Dashboard{% endblock %}
+{% block content %}
+  {% call ui.card('Create Agent') %}
+    <form id="create-agent" class="grid resp">
+      <label class="field"><span>Name</span><input name="name" placeholder="name" required /></label>
+      <label class="field"><span>Host</span><input name="host" placeholder="host" /></label>
+      <div><button class="btn primary" type="submit">Create</button></div>
+    </form>
+  {% endcall %}
+
+  {% call ui.card('Agents') %}
+    <table class="table" id="agentsTable"><thead><tr><th>Name</th><th>ID</th><th>Created</th></tr></thead><tbody></tbody></table>
+  {% endcall %}
+
+  {% call ui.card('Add GPU to Agent') %}
+    <form id="add-gpu" class="grid resp">
+      <label class="field"><span>Agent</span><input name="agent_id" placeholder="agent id" required /></label>
+      <label class="field"><span>Index</span><input name="index" placeholder="index" type="number" required /></label>
+      <label class="field"><span>Name</span><input name="name" placeholder="name" /></label>
+      <label class="field"><span>UUID</span><input name="uuid" placeholder="uuid" /></label>
+      <label class="field"><span>Mem (MB)</span><input name="total_mem_mb" placeholder="mem (MB)" type="number" /></label>
+      <div><button class="btn" type="submit">Add GPU</button></div>
+    </form>
+    <div id="gpu-list"></div>
+  {% endcall %}
+
+<script>
+async function fetchAgents(){
+  const res = await fetch('/api/v1/agents');
+  const data = await res.json();
+  const tbody = document.querySelector('#agentsTable tbody');
+  tbody.innerHTML='';
+  const gpuList = document.getElementById('gpu-list');
+  gpuList.innerHTML='';
+  for(const a of data){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${a.name}</td><td>${a.id}</td><td>${new Date(a.created_at).toLocaleString()}</td>`;
+    tbody.appendChild(tr);
+    const gRes = await fetch(`/api/v1/agents/${a.id}/gpus`);
+    const gpus = await gRes.json();
+    const div = document.createElement('div');
+    div.innerHTML = `<h4>GPUs for ${a.name}</h4>`;
+    const table = document.createElement('table'); table.className = 'table';
+    table.innerHTML = '<thead><tr><th>Index</th><th>Name</th><th>Mem</th><th>Allocated</th></tr></thead>';
+    const tb = document.createElement('tbody');
+    gpus.forEach(g=>{
+      const tr2 = document.createElement('tr');
+      tr2.innerHTML = `<td>${g.index}</td><td>${g.name||''}</td><td>${g.total_mem_mb||''} MB</td><td>${g.is_allocated?'Yes':'No'}</td>`;
+      tb.appendChild(tr2);
+    });
+    table.appendChild(tb);
+    div.appendChild(table);
+    gpuList.appendChild(div);
+  }
+}
+document.getElementById('create-agent').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const payload = {name: fd.get('name'), host: fd.get('host')};
+  await fetch('/api/v1/agents', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+  e.target.reset();
+  fetchAgents();
+});
+
+document.getElementById('add-gpu').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const payload = {
+    agent_id: fd.get('agent_id'),
+    index: parseInt(fd.get('index')),
+    name: fd.get('name'),
+    uuid: fd.get('uuid'),
+    total_mem_mb: fd.get('total_mem_mb') ? parseInt(fd.get('total_mem_mb')) : null
+  };
+  await fetch('/api/v1/agents/gpus', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+  e.target.reset();
+  fetchAgents();
+});
+fetchAgents();
+</script>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% import "components/macros.html" as ui %}
+{% block title %}Run Details · Unified Dashboard{% endblock %}
+{% block content %}
+  {% call ui.card('Run Details') %}
+    <div class="row gap-2">
+      <button class="btn" onclick="post('/api/v1/runs/{{ run_id }}/start')">Start</button>
+      <button class="btn primary" onclick="post('/api/v1/runs/{{ run_id }}/finish?success=true')">Mark Succeeded</button>
+      <button class="btn warn" onclick="post('/api/v1/runs/{{ run_id }}/finish?success=false')">Mark Failed</button>
+      <button class="btn danger" onclick="post('/api/v1/runs/{{ run_id }}/cancel')">Cancel</button>
+    </div>
+    <pre id="meta"></pre>
+  {% endcall %}
+
+  {% call ui.card('Logs') %}
+    <pre id="logs"></pre>
+  {% endcall %}
+<script>
+async function post(url){ const r = await fetch(url, {method:'POST'}); if(r.ok) toast('Updated'); await refresh(); }
+async function refresh(){
+  const res = await fetch('/api/v1/runs/{{ run_id }}');
+  const r = await res.json();
+  document.getElementById('meta').textContent = JSON.stringify(r, null, 2);
+  const lr = await fetch('/api/v1/runs/{{ run_id }}/logs?tail=200');
+  const logs = await lr.json();
+  document.getElementById('logs').textContent = (logs.lines||[]).join('\n');
+}
+refresh();
+</script>
+{% endblock %}

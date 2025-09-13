@@ -1,0 +1,20 @@
+{% macro badge(text, tone='neutral') -%}
+  <span class="badge {{ tone }}">{{ text }}</span>
+{%- endmacro %}
+
+{% macro field(label, inner_html) -%}
+  <label class="field">
+    <span>{{ label }}</span>
+    {{ inner_html|safe }}
+  </label>
+{%- endmacro %}
+
+{% macro card(title='', actions_html='') -%}
+  <section class="card">
+    {% if title %}<div class="card-head row between middle"><h3>{{ title }}</h3><div>{{ actions_html|safe }}</div></div>{% endif %}
+    <div class="card-body">
+      {{ caller() }}
+    </div>
+  </section>
+{%- endmacro %}
+

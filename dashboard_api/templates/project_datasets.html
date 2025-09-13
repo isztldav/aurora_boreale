@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% import "components/macros.html" as ui %}
+{% block title %}Datasets · Unified Dashboard{% endblock %}
+{% block content %}
+<section>
+  <h2 class="muted">Datasets</h2>
+  {% call ui.card('Add Dataset') %}
+    <form id="create-ds" class="grid resp">
+      <label class="field"><span>Name</span><input name="name" placeholder="Name" required /></label>
+      <label class="field"><span>Root</span><input name="root_path" placeholder="/path/to/dataset" required /></label>
+      <label class="field grid-span"><span>Split Layout</span><textarea name="split_layout" placeholder='{"train": true, "val": true, "test": false}' rows="3" style="width:100%"></textarea></label>
+      <div><button class="btn primary" type="submit">Add Dataset</button></div>
+    </form>
+  {% endcall %}
+  {% call ui.card('Datasets') %}
+    <table class="table" id="dsTable"><thead><tr><th>Name</th><th>Root</th><th>Created</th><th></th></tr></thead><tbody></tbody></table>
+  {% endcall %}
+</section>
+<script>
+async function fetchDS(){
+  const res = await fetch('/api/v1/projects/{{ project_id }}/datasets');
+  const data = await res.json();
+  const tbody = document.querySelector('#dsTable tbody');
+  tbody.innerHTML='';
+  data.forEach(d=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${d.name}</td><td><code>${d.root_path}</code></td><td>${new Date(d.created_at).toLocaleString()}</td><td><button class="btn danger" onclick=\"delDs('${d.id}')\">Delete</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+async function delDs(id){
+  await fetch(`/api/v1/projects/datasets/${id}`, {method:'DELETE'});
+  fetchDS();
+}
+document.getElementById('create-ds').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const payload = {
+    name: fd.get('name'),
+    root_path: fd.get('root_path'),
+    split_layout: fd.get('split_layout') ? JSON.parse(fd.get('split_layout')) : null
+  };
+  const r = await fetch('/api/v1/projects/{{ project_id }}/datasets', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+  if(r.ok){ e.target.reset(); toast('Dataset added'); fetchDS(); }
+});
+fetchDS();
+</script>
+{% endblock %}
