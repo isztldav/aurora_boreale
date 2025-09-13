@@ -82,6 +82,23 @@ python run_dashboard.py
 # open http://localhost:8000/web/projects
 ~~~
 
+Tailwind UI build (optional, recommended)
+- The templates use Tailwind utility classes. A prebuilt CSS is not committed to avoid bloating the repo. Build it locally:
+
+~~~bash
+cd web_ui
+npm install  # requires network
+npm run build:css  # outputs ../dashboard_api/static/tw.css
+~~~
+
+- During development you can watch for changes:
+
+~~~bash
+npm run watch:css
+~~~
+
+Note: If you don’t build Tailwind, pages will still render but unstyled. Build once to enable the modern look.
+
 Endpoints (selection):
 - `GET/POST /api/v1/projects` — list/create projects
 - `GET /api/v1/configs/project/{project_id}` — list configs for project
@@ -95,6 +112,9 @@ UI Pages (simple Jinja templates):
 - `/web/projects/{id}/runs` → queue runs; inspect existing runs
 - `/web/runs/{run_id}` → run detail, simple state controls and logs placeholder
 - `/web/agents` → agents and GPU inventory management (manual for now)
+ - `/web/projects/{id}/datasets` → dataset registry
+ - `/web/projects/{id}/models` → model registry
+ - `/web/projects/{id}/augmentations` → augmentation registry
 
 Notes:
 - No scheduler, Docker, or real log/metrics streaming is implemented yet per requirements_v_1.md scope. The API records queued jobs and run states for now.

@@ -3,11 +3,11 @@
 {% block title %}Runs · Unified Dashboard{% endblock %}
 {% block content %}
   {% call ui.card('Queue Run') %}
-    <div class="grid resp">
-      <label class="field"><span>Config</span><select id="config_id"></select></label>
-      <label class="field"><span>Agent</span><select id="agent_id"></select></label>
-      <label class="field"><span>GPU indices</span><input id="gpu_indices" placeholder="e.g., 0 or 0,1" /></label>
-      <div><button class="btn primary" id="queue_run">Queue Run</button></div>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <label class="field"><span>Config</span><select class="px-3 py-2" id="config_id"></select></label>
+      <label class="field"><span>Agent</span><select class="px-3 py-2" id="agent_id"></select></label>
+      <label class="field"><span>GPU indices</span><input class="px-3 py-2" id="gpu_indices" placeholder="e.g., 0 or 0,1" /></label>
+      <div><button class="btn btn-primary" id="queue_run">Queue Run</button></div>
     </div>
   {% endcall %}
 

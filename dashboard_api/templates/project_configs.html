@@ -5,7 +5,7 @@
 <section>
   <h2 class="muted">Configs</h2>
   <div class="card">
-    <form id="builder" class="grid resp">
+    <form id="builder" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <input type="hidden" name="project_id" value="{{ project_id }}" />
 
       <h3 class="grid-span">Basic</h3>
@@ -17,7 +17,7 @@
         <span>Dataset</span>
         <select id="dataset_select"></select>
       </label>
-      <label class="field grid-span">
+      <label class="field sm:col-span-2">
         <span>Dataset root (if not in list)</span>
         <input name="root" placeholder="/datasets/path" />
       </label>
@@ -98,7 +98,7 @@
         <span>Persistent workers</span>
         <input name="persistent_workers" type="checkbox" />
       </label>
-      <label class="field grid-span">
+      <label class="field sm:col-span-2">
         <span>Max datapoints per class</span>
         <input name="max_datapoints_per_class" type="number" step="1" value="10000" />
       </label>
@@ -144,13 +144,13 @@
         <input name="freeze_backbone" type="checkbox" />
       </label>
     </form>
-    <div class="grid-span row gap-2">
+    <div class="sm:col-span-2 flex gap-2">
       <button class="btn" id="preview_btn">Preview JSON</button>
-      <button class="btn primary" id="create_btn">Create Config</button>
+      <button class="btn btn-primary" id="create_btn">Create Config</button>
     </div>
-    <details class="grid-span">
+    <details class="sm:col-span-2">
       <summary>JSON Preview (editable)</summary>
-      <textarea id="json_preview" rows="12" style="width:100%"></textarea>
+      <textarea id="json_preview" rows="12" class="mt-2 w-full rounded-lg border px-3 py-2"></textarea>
     </details>
   </div>
 

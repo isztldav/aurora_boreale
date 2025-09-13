@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { @apply h-full; }
+  body { @apply h-full bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100; }
+}
+
+@layer components {
+  .btn { @apply inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition; }
+  .btn-primary { @apply border-transparent bg-blue-600 text-white hover:bg-blue-700; }
+  .btn-ghost { @apply border-transparent bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800; }
+  .btn-warn { @apply border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-600; }
+  .btn-danger { @apply border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-600; }
+  .card { @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-800; }
+  .card-head { @apply flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-700; }
+  .card-body { @apply p-4; }
+  .container { @apply mx-auto max-w-6xl; }
+  .field { @apply flex flex-col gap-1; }
+  .field > span { @apply text-xs font-medium text-slate-500 dark:text-slate-400; }
+  .table { @apply w-full text-sm; }
+  .table th { @apply border-b border-slate-200 px-3 py-2 text-left text-slate-500 dark:border-slate-700 dark:text-slate-400; }
+  .table td { @apply border-b border-slate-100 px-3 py-2 dark:border-slate-800; }
+  .status { @apply inline-flex items-center gap-2; }
+  .status-dot { @apply inline-block h-2 w-2 rounded-full bg-slate-400; }
+  .status-running { @apply bg-emerald-500; }
+  .status-queued { @apply bg-amber-500; }
+  .status-failed { @apply bg-rose-500; }
+}
+

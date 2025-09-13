@@ -3,13 +3,13 @@
 {% block title %}Run Details · Unified Dashboard{% endblock %}
 {% block content %}
   {% call ui.card('Run Details') %}
-    <div class="row gap-2">
+    <div class="flex flex-wrap gap-2">
       <button class="btn" onclick="post('/api/v1/runs/{{ run_id }}/start')">Start</button>
-      <button class="btn primary" onclick="post('/api/v1/runs/{{ run_id }}/finish?success=true')">Mark Succeeded</button>
-      <button class="btn warn" onclick="post('/api/v1/runs/{{ run_id }}/finish?success=false')">Mark Failed</button>
-      <button class="btn danger" onclick="post('/api/v1/runs/{{ run_id }}/cancel')">Cancel</button>
+      <button class="btn btn-primary" onclick="post('/api/v1/runs/{{ run_id }}/finish?success=true')">Mark Succeeded</button>
+      <button class="btn btn-warn" onclick="post('/api/v1/runs/{{ run_id }}/finish?success=false')">Mark Failed</button>
+      <button class="btn btn-danger" onclick="post('/api/v1/runs/{{ run_id }}/cancel')">Cancel</button>
     </div>
-    <pre id="meta"></pre>
+    <pre class="mt-3" id="meta"></pre>
   {% endcall %}
 
   {% call ui.card('Logs') %}
