@@ -26,6 +26,11 @@ def collate_fn(batch):
     labels = torch.tensor(labels, dtype=torch.long)
     return images, labels
 
+# Use a tensor-based loader to return CxHxW uint8 tensors (RGB)
+def tensor_loader(path: str):
+    return read_image(path, mode=ImageReadMode.RGB)
+
+
 def build_dataloaders(
     root: str,
     train_tfms,
@@ -91,17 +96,13 @@ def build_dataloaders(
         imagefolder_ds.imgs = new_samples  # alias used by torchvision
         imagefolder_ds.targets = new_targets
 
-    # Use a tensor-based loader to return CxHxW uint8 tensors (RGB)
-    def _tensor_loader(path: str):
-        return read_image(path, mode=ImageReadMode.RGB)
-
-    train_dataset = datasets.ImageFolder(train_p, transform=train_tfms, loader=_tensor_loader)
+    train_dataset = datasets.ImageFolder(train_p, transform=train_tfms, loader=tensor_loader)
     _apply_max_per_class(train_dataset, cfg.max_datapoints_per_class)
 
-    val_dataset   = datasets.ImageFolder(val_p,   transform=eval_tfms, loader=_tensor_loader)
+    val_dataset   = datasets.ImageFolder(val_p,   transform=eval_tfms, loader=tensor_loader)
     _apply_max_per_class(val_dataset, cfg.max_datapoints_per_class)
 
-    test_dataset  = datasets.ImageFolder(test_p,  transform=eval_tfms, loader=_tensor_loader) if os.path.isdir(test_p) else None
+    test_dataset  = datasets.ImageFolder(test_p,  transform=eval_tfms, loader=tensor_loader) if os.path.isdir(test_p) else None
     if test_dataset is not None:
         _apply_max_per_class(test_dataset, cfg.max_datapoints_per_class)
 

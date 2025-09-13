@@ -54,15 +54,21 @@ services:
     volumes:
       - ./:/app
       - shared_logs:/app/runs
+      # Host datasets folder mounted inside the agent container
+      - ./datasets:/app/datasets
     environment:
       DASHBOARD_DB_URL: postgresql+psycopg2://dashboard:dashboard@db:5432/dashboard
       NVIDIA_VISIBLE_DEVICES: all
       PYTHONUNBUFFERED: "1"
+      # Where datasets are mounted inside the container
+      DATASETS_DIR: /app/datasets
       # GPU index this container will serve (one agent per GPU)
       GPU_INDEX: "0"
       PYTHONPATH: /app/src
     # Run the agent directly; deps are already installed in the image
     command: bash -lc "python -m agent.server --gpu-index $$GPU_INDEX"
+    # Increase shared memory for PyTorch DataLoader workers
+    shm_size: "2gb"
     depends_on:
       db:
         condition: service_healthy

@@ -9,6 +9,7 @@ from ..db import get_db
 from .. import models
 from ..schemas import RunCreate, RunOut
 from ..utils import resolve_run_name
+from common.experiments import unique_run_name
 from ..tensorboard import get_embedded_url_path
 
 router = APIRouter(prefix="/runs", tags=["runs"])
@@ -42,8 +43,8 @@ def create_run_from_config(config_id: str, payload: RunCreate, db: Session = Dep
     if not cfg:
         raise HTTPException(status_code=404, detail="Config not found")
 
-    # Resolve run name using training repo logic-like placeholders
-    run_name = resolve_run_name(cfg.config_json)
+    # Resolve base run name and ensure uniqueness under the effective TB root
+    base_name = resolve_run_name(cfg.config_json)
     # Validate GPU availability if requested
     if payload.gpu_indices and not payload.agent_id:
         raise HTTPException(status_code=400, detail="agent_id is required when specifying gpu_indices")
@@ -61,6 +62,32 @@ def create_run_from_config(config_id: str, payload: RunCreate, db: Session = Dep
             gpu.is_allocated = True
             db.add(gpu)
 
+    # Place logs/checkpoints under the shared Docker mount but respect the
+    # path structure configured in the dashboard (prefix under shared root).
+    shared_root = os.environ.get("SHARED_LOGS_DIR", "/app/runs")
+    def _under_shared(p: str | None, default: str) -> str:
+        raw = (p or default).lstrip("/\\")
+        # Normalize and eliminate parent traversal to keep within shared_root
+        parts: list[str] = []
+        for seg in raw.replace("\\", "/").split("/"):
+            if seg in ("", "."):
+                continue
+            if seg == "..":
+                if parts:
+                    parts.pop()
+                continue
+            parts.append(seg)
+        safe_rel = "/".join(parts)
+        return os.path.join(shared_root, safe_rel)
+    desired_tb_root = cfg.config_json.get("tb_root")
+    desired_ckpt_root = cfg.config_json.get("ckpt_dir")
+    # Compute the effective logging/checkpoint roots under shared mount
+    effective_log_root = _under_shared(desired_tb_root, "runs")
+    effective_ckpt_root = _under_shared(desired_ckpt_root, "checkpoints")
+
+    # Make the run name unique by probing the log root on disk
+    run_name = unique_run_name(effective_log_root, base_name)
+
     run = models.Run(
         project_id=cfg.project_id,
         config_id=cfg.id,
@@ -72,8 +99,8 @@ def create_run_from_config(config_id: str, payload: RunCreate, db: Session = Dep
         agent_id=payload.agent_id,
         docker_image=payload.docker_image,
         seed=cfg.config_json.get("seed"),
-        log_dir=cfg.config_json.get("tb_root"),
-        ckpt_dir=cfg.config_json.get("ckpt_dir"),
+        log_dir=effective_log_root,
+        ckpt_dir=effective_ckpt_root,
         gpu_indices=payload.gpu_indices or [],
     )
     db.add(run)

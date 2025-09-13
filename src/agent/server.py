@@ -100,6 +100,9 @@ class RunnerAgent:
         self._total_epochs: Optional[int] = None
         self._avg_epoch_time: Optional[float] = None
         self._started_at_ts: Optional[float] = None
+        # Throttled idle logs to help first-time setup
+        self._last_idle_log_ts: float = 0.0
+        self._idle_log_interval: float = 15.0
 
     def status(self) -> StatusOut:
         with self._lock:
@@ -135,6 +138,13 @@ class RunnerAgent:
             else:
                 # simple moving average with weight 0.3 new, 0.7 old
                 self._avg_epoch_time = 0.7 * self._avg_epoch_time + 0.3 * float(epoch_dur)
+            avg = self._avg_epoch_time
+            remaining = max(0, (self._total_epochs or 0) - (self._current_epoch + 1))
+            eta = remaining * avg if avg is not None else None
+        print(
+            f"[agent] Epoch {int(epoch)+1}/{int(total)} finished in {epoch_dur:.1f}s"
+            + (f", ETA ~{eta:.0f}s" if eta is not None else "")
+        )
         # Persist epoch to DB for visibility
         db = SessionLocal()
         try:
@@ -170,6 +180,9 @@ class RunnerAgent:
             db.add(run)
             db.add(job)
             db.commit()
+            print(
+                f"[agent] Dequeued run id={run.id} name={run.name} priority={job.priority} queued_at={job.enqueued_at}"
+            )
             db.expunge(run)
             return run
         finally:
@@ -205,10 +218,63 @@ class RunnerAgent:
                 pass
             # Enforce run-specific fields
             cfg_dict["run_name"] = run.name
-            if run.log_dir:
-                cfg_dict["tb_root"] = run.log_dir
-            if run.ckpt_dir:
-                cfg_dict["ckpt_dir"] = run.ckpt_dir
+            # Use the sanitized paths stored on the Run row (already prefixed
+            # under the shared mount by the dashboard when the run was created).
+            cfg_dict["tb_root"] = run.log_dir
+            cfg_dict["ckpt_dir"] = run.ckpt_dir
+
+            # Datasets: always resolve config.root under a mounted datasets directory
+            datasets_root = os.environ.get("DATASETS_DIR", "/app/datasets")
+            def _under_datasets(p: str | None) -> str:
+                raw = (p or "").strip()
+                if raw.startswith("file://"):
+                    raw = raw[7:]
+                raw = raw.replace("\\", "/")
+                # Normalize and eliminate parent traversal; strip leading slashes/dots
+                raw = raw.lstrip("/\\.")
+                parts: list[str] = []
+                for seg in raw.split("/"):
+                    if seg in ("", "."):
+                        continue
+                    if seg == "..":
+                        if parts:
+                            parts.pop()
+                        continue
+                    parts.append(seg)
+                safe_rel = "/".join(parts)
+                return os.path.join(datasets_root, safe_rel)
+
+            cfg_dict["root"] = _under_datasets(cfg_dict.get("root"))
+            # Early diagnostics for paths
+            root_path = cfg_dict.get("root")
+            tb_root = cfg_dict.get("tb_root")
+            ckpt_root = cfg_dict.get("ckpt_dir")
+            num_workers = int(cfg_dict.get("num_workers", 4) or 0)
+            prefetch_factor = int(cfg_dict.get("prefetch_factor", 4) or 2)
+            print(
+                f"[agent] Preparing run id={run.id} name={run.name}\n"
+                f"        dataset_root={root_path}\n        tb_root={tb_root}\n        ckpt_dir={ckpt_root}"
+            )
+            if not os.path.isdir(root_path):
+                print(
+                    f"[agent][warn] Dataset root does not exist: {root_path}. "
+                    f"Ensure the host folder is mounted into the container (DATASETS_DIR)."
+                )
+            # Report /dev/shm size (important for PyTorch DataLoader workers)
+            try:
+                st = os.statvfs('/dev/shm')
+                shm_total = st.f_frsize * st.f_blocks
+                shm_avail = st.f_frsize * st.f_bavail
+                print(
+                    f"[agent] /dev/shm total={shm_total//(1024**2)}MB avail={shm_avail//(1024**2)}MB; num_workers={num_workers} prefetch_factor={prefetch_factor}"
+                )
+                if num_workers > 0 and shm_avail < 512 * 1024 * 1024:
+                    print(
+                        "[agent][warn] Low shared memory available for DataLoader workers. "
+                        "Increase container shm_size (e.g., 2GB) or set num_workers=0 in the config to avoid worker crashes."
+                    )
+            except Exception:
+                pass
             cfg = TrainConfig(**cfg_dict)
 
             # Restrict visible GPUs if indices specified
@@ -223,6 +289,9 @@ class RunnerAgent:
                 self._total_epochs = cfg.epochs
                 self._avg_epoch_time = None
                 self._started_at_ts = time.time()
+            print(
+                f"[agent] Starting training: run={run.name} epochs={cfg.epochs} cuda_visible_devices={os.environ.get('CUDA_VISIBLE_DEVICES', '(unset)')}"
+            )
 
             _ = train_runner.run_experiment(
                 cfg,
@@ -244,9 +313,13 @@ class RunnerAgent:
                     # Release GPUs
                     self._release_gpus(db2, r)
                     db2.commit()
+                print("[agent] Training finished for run=", run.name)
             finally:
                 db2.close()
         except Exception as e:
+            import traceback
+            print("[agent][error] Exception while training run=", run.name, "=>", e)
+            traceback.print_exc()
             db3 = SessionLocal()
             try:
                 r = db3.get(models.Run, run.id)
@@ -272,6 +345,7 @@ class RunnerAgent:
                 self._total_epochs = None
                 self._avg_epoch_time = None
                 self._started_at_ts = None
+            print(f"[agent] Cleared current run state for agent_id={self.agent_id}")
 
     def _loop_once(self):
         run = self._select_next_run()
@@ -282,9 +356,16 @@ class RunnerAgent:
 
     async def run_forever(self):
         init_db()
+        print(f"[agent] Worker loop started for agent_id={self.agent_id}. Polling every {self.poll_interval:.1f}s")
         while not self._stop_event.is_set():
             did_work = await asyncio.get_event_loop().run_in_executor(None, self._loop_once)
             if not did_work:
+                now = time.time()
+                if now - self._last_idle_log_ts >= self._idle_log_interval:
+                    print(
+                        f"[agent] No queued runs for agent_id={self.agent_id}. Next check in {self.poll_interval:.1f}s"
+                    )
+                    self._last_idle_log_ts = now
                 await asyncio.sleep(self.poll_interval)
 
     def stop(self):
@@ -320,6 +401,9 @@ def create_app(agent_id: Optional[str] = None, gpu_index: Optional[int] = None) 
         os.environ["CUDA_VISIBLE_DEVICES"] = str(int(gpu.get("index", 0)))
     except Exception:
         pass
+    print(
+        f"[agent] Booting with agent_id={effective_agent_id} host={host} gpu_index={gpu.get('index')} gpu_name={gpu.get('name')}"
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -452,6 +536,7 @@ def create_app(agent_id: Optional[str] = None, gpu_index: Optional[int] = None) 
 
     @app.post("/halt")
     def halt():
+        print("[agent] Halt requested via API")
         agent.request_halt()
         return {"ok": True}
 

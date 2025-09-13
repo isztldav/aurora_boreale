@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Keep Python fast and quiet
 ENV PYTHONDONTWRITEBYTECODE=1 \

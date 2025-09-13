@@ -146,6 +146,27 @@ Notes
 - The web talks to the agent on the internal Docker network; you don’t need to expose the agent port for normal use.
  - `/web/projects/{id}/augmentations` → augmentation registry
 
+Logging and checkpoints
+- All TensorBoard logs and checkpoints are placed under the shared volume mount inside containers (default: `/app/runs`).
+- The configured `tb_root` and `ckpt_dir` from the dashboard are respected as subpaths and are prefixed under the shared mount. Example: `tb_root="experiments/logs/foo"` becomes `/app/runs/experiments/logs/foo`.
+- Override the mount prefix with `SHARED_LOGS_DIR` if your path differs.
+
+Run naming and uniqueness
+- The dashboard now assigns a unique run name at queue time by appending `-vK` (e.g., `model__loss__pretrained`, `model__loss__pretrained-v1`, ...), probing the effective log root on disk.
+- Both the agent and the embedded TensorBoard use this stored run name, so checkpoints and logs always land under the same directory and are not overwritten when reusing a config.
+
+Datasets
+- Provide datasets from the host by mounting a folder into the agent container at `/app/datasets` (default).
+- The `TrainConfig.root` specified in the dashboard is treated as a path relative to this mount. Examples:
+  - `/datasetname/split/labels/images` → `/app/datasets/datasetname/split/labels/images`
+  - `datasetname/split/labels/images` → `/app/datasets/datasetname/split/labels/images`
+  - `./datasetname/split/labels/images` → `/app/datasets/datasetname/split/labels/images`
+- Override the mount location with `DATASETS_DIR` in the agent environment if needed.
+
+Shared memory (DataLoader workers)
+- PyTorch DataLoader with `num_workers>0` uses POSIX shared memory (`/dev/shm`). If too small, workers may crash with "Unexpected bus error… insufficient shared memory".
+- The agent service sets `shm_size: 2gb` in `docker-compose.yml`. Increase if needed, or set `num_workers=0` in your TrainConfig to disable multiprocessing.
+
 Notes:
 - No scheduler, Docker, or real log/metrics streaming is implemented yet per requirements_v_1.md scope. The API records queued jobs and run states for now.
 

@@ -6,3 +6,6 @@ Jinja2>=3.1
 aiofiles>=23.1
 tensorboard>=2.14
 psycopg2-binary>=2.9
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
