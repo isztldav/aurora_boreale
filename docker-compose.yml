@@ -43,8 +43,10 @@ services:
       - internal
 
   agent:
-    # Base Python image; PyTorch CUDA 12.9 wheels are installed from requirements
-    image: python:3.11-slim
+    # Build an image that pre-installs heavy CUDA/PyTorch deps
+    build:
+      context: .
+      dockerfile: src/agent/Dockerfile
     container_name: training-agent
     working_dir: /app
     # Mount the app source and the same shared logs volume for writing TB logs
@@ -58,8 +60,8 @@ services:
       # GPU index this container will serve (one agent per GPU)
       GPU_INDEX: "0"
       PYTHONPATH: /app/src
-    command: >
-      bash -lc "pip install --no-cache-dir -r src/agent/requirements.txt && python -m agent.server --gpu-index $$GPU_INDEX"
+    # Run the agent directly; deps are already installed in the image
+    command: bash -lc "python -m agent.server --gpu-index $$GPU_INDEX"
     depends_on:
       db:
         condition: service_healthy

@@ -12,3 +12,7 @@ services:
       --log-level debug"
     environment:
       DASHBOARD_DEBUG: "1"
+
+  agent:
+    # Enable code reload for faster iteration during development
+    command: bash -lc "python -m agent.server --gpu-index $$GPU_INDEX --reload"

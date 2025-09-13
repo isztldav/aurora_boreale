@@ -416,6 +416,8 @@ def create_app(agent_id: Optional[str] = None, gpu_index: Optional[int] = None) 
                 task.cancel()
                 try:
                     await task
+                except asyncio.CancelledError:
+                    pass
                 except Exception:
                     pass
             hb = getattr(app.state, "heartbeat", None)
@@ -423,6 +425,8 @@ def create_app(agent_id: Optional[str] = None, gpu_index: Optional[int] = None) 
                 hb.cancel()
                 try:
                     await hb
+                except asyncio.CancelledError:
+                    pass
                 except Exception:
                     pass
 
@@ -454,7 +458,14 @@ if __name__ == "__main__":
     parser.add_argument("--gpu-index", type=int, default=None, help="GPU index this agent is bound to")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=7070)
+    parser.add_argument("--reload", action="store_true", help="Auto-reload on code changes (dev only)")
     args = parser.parse_args()
 
     # Allow overriding DB via env var DASHBOARD_DB_URL
-    uvicorn.run(create_app(args.agent_id, args.gpu_index), host=args.host, port=args.port)
+    uvicorn.run(
+        create_app(args.agent_id, args.gpu_index),
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
+        reload_dirs=["/app/src"],
+    )
