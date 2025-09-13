@@ -108,14 +108,15 @@ Endpoints (selection):
 - `GET /api/v1/configs/project/{project_id}` — list configs for project
 - `POST /api/v1/configs` — create a config (payload mirrors utils.config.TrainConfig fields)
 - `POST /api/v1/runs/from-config/{config_id}` — queue a run (creates run + job rows)
-- `GET /api/v1/agents` — list agents; `POST /api/v1/agents` — create agent; `POST /api/v1/agents/gpus` — add GPU to agent
+- `GET /api/v1/agents` — list agents; `GET /api/v1/agents/{agent_id}/gpus` — list GPUs for agent
+  - Note: Agents and GPUs are auto-registered by the agent process; manual creation is disabled.
 
 UI Pages (simple Jinja templates):
 - `/web/projects` → projects list and create
 - `/web/projects/{id}/configs` → configs list and create (paste JSON)
 - `/web/projects/{id}/runs` → queue runs; inspect existing runs
 - `/web/runs/{run_id}` → run detail, simple state controls and logs placeholder
-- `/web/agents` → agents and GPU inventory management (manual for now)
+- `/web/agents` → agents and GPU inventory (read-only; auto-registered)
  - `/web/projects/{id}/datasets` → dataset registry
  - `/web/projects/{id}/models` → model registry
 

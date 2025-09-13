@@ -232,7 +232,7 @@ Base: `/api/v1`
 - **/projects/:id/configs** — table + JSON/visual editor for `TrainConfig`; diff & versioning; validation panel.
 - **/projects/:id/runs** — filterable runs; states; bulk actions (cancel/clone).
 - **/runs/:id** — header (state, metric, duration), live logs (ansi), metrics charts (acc@1, loss, f1), artifacts list, TB iframe tab, config tab (read‑only), hardware tab (agent, GPUs).
-- **/agents** — nodes & GPUs with utilization and running runs.
+- **/agents** — nodes & GPUs with utilization and running runs (read-only; agents auto-register and update heartbeat/GPU info).
 - **/datasets** — registered datasets; browse classes; quick sanity thumbnails.
 - **/augmentations** — catalog of presets; enable/disable; preview transform chain (static sample image).
 
@@ -385,4 +385,3 @@ experiments/
 ## 21) Definition of Done (v1.0)
 
 - A non-admin user can log in, pick a project, create/validate a config, launch a run on a selected GPU, watch logs in realtime, open TensorBoard embed, and download the best checkpoint — without SSHing anywhere or touching code.
-

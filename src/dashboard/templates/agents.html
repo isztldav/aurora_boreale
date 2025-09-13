@@ -2,27 +2,8 @@
 {% import "components/macros.html" as ui %}
 {% block title %}Agents · Unified Dashboard{% endblock %}
 {% block content %}
-  {% call ui.card('Create Agent') %}
-    <form id="create-agent" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <label class="field"><span>Name</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="name" placeholder="name" required /></label>
-      <label class="field"><span>Host</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="host" placeholder="host" /></label>
-      <div><button class="btn btn-primary" type="submit">Create</button></div>
-    </form>
-  {% endcall %}
-
   {% call ui.card('Agents') %}
     <table class="table" id="agentsTable"><thead><tr><th>Name</th><th>ID</th><th>Created</th></tr></thead><tbody></tbody></table>
-  {% endcall %}
-
-  {% call ui.card('Add GPU to Agent') %}
-    <form id="add-gpu" class="grid grid-cols-1 gap-4 sm:grid-cols-5">
-      <label class="field"><span>Agent</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="agent_id" placeholder="agent id" required /></label>
-      <label class="field"><span>Index</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="index" placeholder="index" type="number" required /></label>
-      <label class="field"><span>Name</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="name" placeholder="name" /></label>
-      <label class="field"><span>UUID</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="uuid" placeholder="uuid" /></label>
-      <label class="field"><span>Mem (MB)</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="total_mem_mb" placeholder="mem (MB)" type="number" /></label>
-      <div><button class="btn btn-primary" type="submit">Add GPU</button></div>
-    </form>
     <div id="gpu-list"></div>
   {% endcall %}
 
@@ -55,29 +36,6 @@ async function fetchAgents(){
     gpuList.appendChild(div);
   }
 }
-document.getElementById('create-agent').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  const payload = {name: fd.get('name'), host: fd.get('host')};
-  await fetch('/api/v1/agents', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-  e.target.reset();
-  fetchAgents();
-});
-
-document.getElementById('add-gpu').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  const payload = {
-    agent_id: fd.get('agent_id'),
-    index: parseInt(fd.get('index')),
-    name: fd.get('name'),
-    uuid: fd.get('uuid'),
-    total_mem_mb: fd.get('total_mem_mb') ? parseInt(fd.get('total_mem_mb')) : null
-  };
-  await fetch('/api/v1/agents/gpus', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-  e.target.reset();
-  fetchAgents();
-});
 fetchAgents();
 </script>
 {% endblock %}

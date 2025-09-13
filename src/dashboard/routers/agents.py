@@ -16,14 +16,8 @@ def list_agents(db: Session = Depends(get_db)):
 
 @router.post("", response_model=AgentOut)
 def create_agent(payload: AgentCreate, db: Session = Depends(get_db)):
-    exists = db.query(models.Agent).filter(models.Agent.name == payload.name).first()
-    if exists:
-        raise HTTPException(status_code=400, detail="Agent with this name exists")
-    agent = models.Agent(name=payload.name, host=payload.host, labels=payload.labels or {})
-    db.add(agent)
-    db.commit()
-    db.refresh(agent)
-    return agent
+    # Manual creation disabled: agents auto-register via the agent process
+    raise HTTPException(status_code=405, detail="Manual agent creation is disabled; agents auto-register.")
 
 
 @router.post("/refresh")
@@ -39,22 +33,8 @@ def list_gpus(agent_id: str, db: Session = Depends(get_db)):
 
 @router.post("/gpus", response_model=GPUOut)
 def add_gpu(payload: GPUCreate, db: Session = Depends(get_db)):
-    agent = db.query(models.Agent).get(payload.agent_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    gpu = models.GPU(
-        agent_id=payload.agent_id,
-        index=payload.index,
-        uuid=payload.uuid,
-        name=payload.name,
-        total_mem_mb=payload.total_mem_mb,
-        compute_capability=payload.compute_capability,
-        last_seen_at=datetime.utcnow(),
-    )
-    db.add(gpu)
-    db.commit()
-    db.refresh(gpu)
-    return gpu
+    # Manual GPU management disabled: agents manage GPUs automatically
+    raise HTTPException(status_code=405, detail="Manual GPU management is disabled; agents manage GPUs automatically.")
 
 
 @router.post("/{agent_id}/gpus/{index}/reserve")
@@ -87,4 +67,3 @@ def release_gpu(agent_id: str, index: int, db: Session = Depends(get_db)):
     db.add(gpu)
     db.commit()
     return {"ok": True}
-
