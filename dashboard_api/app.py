@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.responses import HTMLResponse, RedirectResponse
+from starlette.middleware.wsgi import WSGIMiddleware
 
 from .db import init_db
 from .routers import projects, groups, configs, runs, agents, auth, datasets, registry_models, augmentations
@@ -29,6 +30,11 @@ def create_app() -> FastAPI:
     # Static and templates for a minimal web UI
     app.mount("/static", StaticFiles(directory="dashboard_api/static"), name="static")
     templates = Jinja2Templates(directory="dashboard_api/templates")
+
+    # Mount TensorBoard as a WSGI app under /tb
+    from .tensorboard import make_dispatcher
+    dispatcher = make_dispatcher(SessionLocal, models)
+    app.mount("/tb", WSGIMiddleware(dispatcher))
 
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request):

@@ -9,7 +9,7 @@ from ..db import get_db
 from .. import models
 from ..schemas import RunCreate, RunOut
 from ..utils import resolve_run_name
-from ..tensorboard import get_or_start_tensorboard
+from ..tensorboard import get_embedded_url_path
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -156,16 +156,14 @@ def get_logs(run_id: str, tail: int = 200):
 
 @router.get("/{run_id}/tensorboard")
 def tensorboard_url(run_id: str, db: Session = Depends(get_db)):
-    """Return (and if needed start) a TensorBoard server URL for this run.
+    """Return the embedded TensorBoard URL path for this run.
 
-    The effective logdir is computed as ``(run.log_dir or 'runs')/run.name``.
+    Served by the app itself under ``/tb/<run_id>``.
     """
     run = db.query(models.Run).get(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Not found")
-    root = run.log_dir or "runs"
-    logdir = os.path.join(root, run.name)
-    url = get_or_start_tensorboard(str(run.id), logdir)
+    url = get_embedded_url_path(str(run.id))
     return {"url": url}
 
 

@@ -77,7 +77,7 @@ tensorboard --logdir experiments/logs
 Run the dashboard locally:
 
 ~~~bash
-pip install fastapi "uvicorn[standard]" sqlalchemy pydantic
+pip install fastapi "uvicorn[standard]" sqlalchemy pydantic tensorboard
 python run_dashboard.py
 # open http://localhost:8000/web/projects
 ~~~
