@@ -5,6 +5,8 @@ from starlette.responses import HTMLResponse, RedirectResponse
 
 from .db import init_db
 from .routers import projects, groups, configs, runs, agents, auth, datasets, registry_models, augmentations
+from .db import SessionLocal
+from . import models
 
 
 def create_app() -> FastAPI:
@@ -41,29 +43,44 @@ def create_app() -> FastAPI:
     async def web_projects(request: Request):
         return templates.TemplateResponse("projects.html", {"request": request})
 
+    def _get_project(project_id: str):
+        db = SessionLocal()
+        try:
+            return db.query(models.Project).get(project_id)
+        finally:
+            db.close()
+
     @app.get("/web/projects/{project_id}", response_class=HTMLResponse)
     async def web_project_overview(project_id: str, request: Request):
-        return templates.TemplateResponse("project_overview.html", {"request": request, "project_id": project_id})
+        project = _get_project(project_id)
+        return templates.TemplateResponse(
+            "project_overview.html", {"request": request, "project_id": project_id, "project": project}
+        )
 
     @app.get("/web/projects/{project_id}/configs", response_class=HTMLResponse)
     async def web_project_configs(project_id: str, request: Request):
-        return templates.TemplateResponse("project_configs.html", {"request": request, "project_id": project_id})
+        project = _get_project(project_id)
+        return templates.TemplateResponse("project_configs.html", {"request": request, "project_id": project_id, "project": project})
 
     @app.get("/web/projects/{project_id}/runs", response_class=HTMLResponse)
     async def web_project_runs(project_id: str, request: Request):
-        return templates.TemplateResponse("project_runs.html", {"request": request, "project_id": project_id})
+        project = _get_project(project_id)
+        return templates.TemplateResponse("project_runs.html", {"request": request, "project_id": project_id, "project": project})
 
     @app.get("/web/projects/{project_id}/datasets", response_class=HTMLResponse)
     async def web_project_datasets(project_id: str, request: Request):
-        return templates.TemplateResponse("project_datasets.html", {"request": request, "project_id": project_id})
+        project = _get_project(project_id)
+        return templates.TemplateResponse("project_datasets.html", {"request": request, "project_id": project_id, "project": project})
 
     @app.get("/web/projects/{project_id}/models", response_class=HTMLResponse)
     async def web_project_models(project_id: str, request: Request):
-        return templates.TemplateResponse("project_models.html", {"request": request, "project_id": project_id})
+        project = _get_project(project_id)
+        return templates.TemplateResponse("project_models.html", {"request": request, "project_id": project_id, "project": project})
 
     @app.get("/web/projects/{project_id}/augmentations", response_class=HTMLResponse)
     async def web_project_augmentations(project_id: str, request: Request):
-        return templates.TemplateResponse("project_augmentations.html", {"request": request, "project_id": project_id})
+        project = _get_project(project_id)
+        return templates.TemplateResponse("project_augmentations.html", {"request": request, "project_id": project_id, "project": project})
 
     @app.get("/web/runs/{run_id}", response_class=HTMLResponse)
     async def web_run_detail(run_id: str, request: Request):

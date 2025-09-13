@@ -1,14 +1,15 @@
-{% extends "base.html" %}
+{% extends "layouts/project_base.html" %}
 {% import "components/macros.html" as ui %}
 {% block title %}Datasets · Unified Dashboard{% endblock %}
-{% block content %}
+{% block crumb %}Datasets{% endblock %}
+{% block project_content %}
 <section>
   <h2 class="muted">Datasets</h2>
   {% call ui.card('Add Dataset') %}
-    <form id="create-ds" class="grid resp">
-      <label class="field"><span>Name</span><input name="name" placeholder="Name" required /></label>
-      <label class="field"><span>Root</span><input name="root_path" placeholder="/path/to/dataset" required /></label>
-      <label class="field grid-span"><span>Split Layout</span><textarea name="split_layout" placeholder='{"train": true, "val": true, "test": false}' rows="3" style="width:100%"></textarea></label>
+    <form id="create-ds" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <label class="field"><span>Name</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="name" placeholder="Name" required /></label>
+      <label class="field"><span>Root</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="root_path" placeholder="/path/to/dataset" required /></label>
+      <label class="field sm:col-span-2"><span>Split Layout</span><textarea class="mt-1 w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="split_layout" placeholder='{"train": true, "val": true, "test": false}' rows="3"></textarea></label>
       <div><button class="btn primary" type="submit">Add Dataset</button></div>
     </form>
   {% endcall %}

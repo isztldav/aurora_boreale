@@ -1,7 +1,8 @@
-{% extends "base.html" %}
+{% extends "layouts/project_base.html" %}
 {% import "components/macros.html" as ui %}
 {% block title %}Run Details · Unified Dashboard{% endblock %}
-{% block content %}
+{% block crumb %}Run{% endblock %}
+{% block project_content %}
   {% call ui.card('Run Details') %}
     <div class="flex flex-wrap gap-2">
       <button class="btn" onclick="post('/api/v1/runs/{{ run_id }}/start')">Start</button>

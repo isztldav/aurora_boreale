@@ -1,14 +1,15 @@
-{% extends "base.html" %}
-{% import "components/macros.html" as ui %}
+{% extends "layouts/project_base.html" %}
 {% block title %}Project · Unified Dashboard{% endblock %}
-{% block content %}
-  {% call ui.card('Project') %}
-    <div class="grid resp">
-      <a class="btn" href="/web/projects/{{ project_id }}/configs">⚙️ Configs</a>
-      <a class="btn" href="/web/projects/{{ project_id }}/runs">🚀 Runs</a>
-      <a class="btn" href="/web/projects/{{ project_id }}/datasets">🗂️ Datasets</a>
-      <a class="btn" href="/web/projects/{{ project_id }}/models">🧠 Models</a>
-      <a class="btn" href="/web/projects/{{ project_id }}/augmentations">🎛️ Augmentations</a>
+{% block crumb %}Overview{% endblock %}
+{% block project_content %}
+  {% import "components/macros.html" as ui %}
+  {% call ui.card('Quick Links') %}
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <a class="btn btn-ghost" href="/web/projects/{{ project.id }}/configs">⚙️ Configs</a>
+      <a class="btn btn-ghost" href="/web/projects/{{ project.id }}/runs">🚀 Runs</a>
+      <a class="btn btn-ghost" href="/web/projects/{{ project.id }}/datasets">🗂️ Datasets</a>
+      <a class="btn btn-ghost" href="/web/projects/{{ project.id }}/models">🧠 Models</a>
+      <a class="btn btn-ghost" href="/web/projects/{{ project.id }}/augmentations">🎛️ Augmentations</a>
     </div>
   {% endcall %}
 {% endblock %}

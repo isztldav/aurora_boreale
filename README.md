@@ -99,6 +99,10 @@ npm run watch:css
 
 Note: If you don’t build Tailwind, pages will still render but unstyled. Build once to enable the modern look.
 
+Forms plugin
+- The UI uses Tailwind Forms plugin for polished inputs. It’s already listed in devDependencies.
+- If you installed dependencies before this change, run `npm install` again.
+
 Endpoints (selection):
 - `GET/POST /api/v1/projects` — list/create projects
 - `GET /api/v1/configs/project/{project_id}` — list configs for project

@@ -1,14 +1,15 @@
-{% extends "base.html" %}
+{% extends "layouts/project_base.html" %}
 {% import "components/macros.html" as ui %}
 {% block title %}Models · Unified Dashboard{% endblock %}
-{% block content %}
+{% block crumb %}Models{% endblock %}
+{% block project_content %}
 <section>
   <h2 class="muted">Models Registry</h2>
   {% call ui.card('Add Model') %}
-    <form id="create-model" class="grid resp">
-      <label class="field"><span>Label</span><input name="label" placeholder="Label" required /></label>
-      <label class="field"><span>HF checkpoint id</span><input name="hf_checkpoint_id" placeholder="hf checkpoint id" required /></label>
-      <label class="field"><span>Notes</span><input name="notes" placeholder="Notes" /></label>
+    <form id="create-model" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <label class="field"><span>Label</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="label" placeholder="Label" required /></label>
+      <label class="field"><span>HF checkpoint id</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="hf_checkpoint_id" placeholder="hf checkpoint id" required /></label>
+      <label class="field"><span>Notes</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" name="notes" placeholder="Notes" /></label>
       <label class="field"><span>Default pretrained</span><input type="checkbox" name="default_pretrained" checked /></label>
       <div><button class="btn primary" type="submit">Add</button></div>
     </form>

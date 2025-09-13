@@ -1,12 +1,13 @@
-{% extends "base.html" %}
+{% extends "layouts/project_base.html" %}
 {% import "components/macros.html" as ui %}
 {% block title %}Runs · Unified Dashboard{% endblock %}
-{% block content %}
+{% block crumb %}Runs{% endblock %}
+{% block project_content %}
   {% call ui.card('Queue Run') %}
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <label class="field"><span>Config</span><select class="px-3 py-2" id="config_id"></select></label>
-      <label class="field"><span>Agent</span><select class="px-3 py-2" id="agent_id"></select></label>
-      <label class="field"><span>GPU indices</span><input class="px-3 py-2" id="gpu_indices" placeholder="e.g., 0 or 0,1" /></label>
+      <label class="field"><span>Config</span><select class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" id="config_id"></select></label>
+      <label class="field"><span>Agent</span><select class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" id="agent_id"></select></label>
+      <label class="field"><span>GPU indices</span><input class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700" id="gpu_indices" placeholder="e.g., 0 or 0,1" /></label>
       <div><button class="btn btn-primary" id="queue_run">Queue Run</button></div>
     </div>
   {% endcall %}
