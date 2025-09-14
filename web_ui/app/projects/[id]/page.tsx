@@ -29,7 +29,7 @@ export default function ProjectPage() {
     queryFn: () => api.runs.list({ project_id: projectId }),
   })
   const [q, setQ] = useState('')
-  const [states, setStates] = useState<Record<string, boolean>>({ running: true, queued: true, failed: true, succeeded: true })
+  const [states, setStates] = useState<Record<string, boolean>>({ running: true, queued: true, failed: true, succeeded: true, canceled: true })
   const [cols, setCols] = useState<Record<string, boolean>>({ best: true, epoch: true, started: true, finished: true })
   const filtered = useMemo(() => {
     const sel = new Set(Object.entries(states).filter(([, v]) => v).map(([k]) => k))
@@ -90,9 +90,9 @@ export default function ProjectPage() {
           <div className="flex items-center gap-2">
             <Tabs defaultValue="all">
               <TabsList>
-                <TabsTrigger value="all" onClick={() => setStates({ running: true, queued: true, failed: true, succeeded: true })}>All</TabsTrigger>
-                <TabsTrigger value="active" onClick={() => setStates({ running: true, queued: true, failed: false, succeeded: false })}>Active</TabsTrigger>
-                <TabsTrigger value="done" onClick={() => setStates({ running: false, queued: false, failed: true, succeeded: true })}>Done</TabsTrigger>
+                <TabsTrigger value="all" onClick={() => setStates({ running: true, queued: true, failed: true, succeeded: true, canceled: true })}>All</TabsTrigger>
+                <TabsTrigger value="active" onClick={() => setStates({ running: true, queued: true, failed: false, succeeded: false, canceled: false })}>Active</TabsTrigger>
+                <TabsTrigger value="done" onClick={() => setStates({ running: false, queued: false, failed: true, succeeded: true, canceled: true })}>Done</TabsTrigger>
               </TabsList>
             </Tabs>
             <Input placeholder="Search runs" value={q} onChange={(e) => setQ(e.target.value)} className="w-[220px]" />
@@ -101,7 +101,7 @@ export default function ProjectPage() {
               <PopoverContent align="end">
                 <div className="space-y-2">
                   <div className="text-xs font-medium">State</div>
-                  {(['running','queued','succeeded','failed'] as const).map((s) => (
+                  {(['running','queued','succeeded','failed','canceled'] as const).map((s) => (
                     <label key={s} className="flex items-center gap-2 text-sm">
                       <Checkbox checked={!!states[s]} onCheckedChange={(v) => setStates((prev) => ({ ...prev, [s]: Boolean(v) }))} />
                       <span className="capitalize">{s}</span>
@@ -157,11 +157,20 @@ export default function ProjectPage() {
                   {cols.started && <TD>{formatDateTime(r.started_at)}</TD>}
                   {cols.finished && <TD>{formatDateTime(r.finished_at)}</TD>}
                   <TD className="text-right space-x-2">
-                    {r.state === 'queued' && (<Button size="sm" onClick={() => api.runs.start(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))}>Start</Button>)}
+                    <Button variant="outline" size="sm" onClick={async () => {
+                      try { const { url } = await api.runs.tensorboard(r.id); window.open(url, '_blank'); } catch {}
+                    }}>TensorBoard</Button>
+                    {r.state === 'queued' && (
+                      <>
+                        <Button size="sm" onClick={() => api.runs.start(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))}>Start</Button>
+                        <Button variant="outline" size="sm" onClick={() => api.runs.cancel(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))}>Cancel</Button>
+                      </>
+                    )}
                     {r.state === 'running' && (
                       <>
                         <Button variant="secondary" size="sm" onClick={() => api.runs.finish(r.id, true).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))}>Finish</Button>
-                        <Button variant="outline" size="sm" onClick={() => api.runs.cancel(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))}>Cancel</Button>
+                        <Button variant="outline" size="sm" onClick={() => api.runs.halt(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))}>Halt</Button>
+                        <Button variant="destructive" size="sm" onClick={() => api.runs.cancel(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))}>Cancel</Button>
                       </>
                     )}
                   </TD>

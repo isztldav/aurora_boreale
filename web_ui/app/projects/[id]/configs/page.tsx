@@ -2,8 +2,8 @@
 
 import { useParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
-import { apiEx } from '@/lib/api'
+import { useMemo, useState } from 'react'
+import { api, apiEx } from '@/lib/api'
 import { Shell } from '@/components/shell/shell'
 import { ProjectNav } from '@/components/projects/project-nav'
 import { Table, THead, TBody, TR, TH, TD } from '@/components/ui/table'
@@ -11,12 +11,17 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { toast } from 'sonner'
 
 export default function ProjectConfigsPage() {
   const params = useParams<{ id: string }>()
   const projectId = params.id
   const qc = useQueryClient()
   const { data, isLoading, error } = useQuery({ queryKey: ['configs', { projectId }], queryFn: () => apiEx.configs.list(projectId) })
+  const { data: groups } = useQuery({ queryKey: ['groups', { projectId }], queryFn: () => api.groups.list(projectId) })
+  const { data: models } = useQuery({ queryKey: ['models', { projectId }], queryFn: () => apiEx.models.list(projectId) })
 
   return (
     <Shell>
@@ -51,60 +56,208 @@ export default function ProjectConfigsPage() {
         </div>
         <div className="rounded-lg border">
           <div className="p-4 border-b"><h2 className="text-sm font-medium">New Config</h2></div>
-          <ConfigForm projectId={projectId} onCreated={() => qc.invalidateQueries({ queryKey: ['configs', { projectId }] })} />
+          <ConfigForm projectId={projectId} groups={groups || []} models={models || []} onCreated={() => qc.invalidateQueries({ queryKey: ['configs', { projectId }] })} />
         </div>
       </div>
     </Shell>
   )
 }
 
-function ConfigForm({ projectId, onCreated }: { projectId: string; onCreated: () => void }) {
-  const qc = useQueryClient()
+function ConfigForm({ projectId, groups, models, onCreated }: { projectId: string; groups: { id: string; name: string }[]; models: { label: string; hf_checkpoint_id: string }[]; onCreated: () => void }) {
   const [name, setName] = useState('baseline')
-  const [groupId, setGroupId] = useState('')
-  const [json, setJson] = useState(() => JSON.stringify({
-    root: '/app/datasets/your-dataset',
-    model_flavour: 'google/vit-base-patch16-224',
-    loss_name: 'cross_entropy',
-    batch_size: 64,
-    epochs: 10,
-    optimizer: 'adamw',
-    lr: 5e-4,
-    weight_decay: 0.05,
-    warmup_ratio: 0.05,
-    tb_root: 'runs',
-    ckpt_dir: 'checkpoints',
-    monitor_metric: 'val_acc@1',
-    monitor_mode: 'max'
-  }, null, 2))
-  const [error, setError] = useState<string | null>(null)
-  const onSubmit = async (e: React.FormEvent) => {
+  const [groupId, setGroupId] = useState<string | undefined>(undefined)
+  const [root, setRoot] = useState('/app/datasets/your-dataset')
+  const [modelFlavour, setModelFlavour] = useState('google/vit-base-patch16-224')
+  const [loss, setLoss] = useState('cross_entropy')
+  const [batchSize, setBatchSize] = useState(64)
+  const [epochs, setEpochs] = useState(10)
+  const [optimizer, setOptimizer] = useState('adamw')
+  const [lr, setLr] = useState(5e-4)
+  const [weightDecay, setWeightDecay] = useState(0.05)
+  const [warmup, setWarmup] = useState(0.05)
+  const [prefetch, setPrefetch] = useState(4)
+  const [workers, setWorkers] = useState(4)
+  const [persistentWorkers, setPersistentWorkers] = useState(false)
+  const [gradAccum, setGradAccum] = useState(1)
+  const [seed, setSeed] = useState(42)
+  const [loadPretrained, setLoadPretrained] = useState(true)
+  const [tbRoot, setTbRoot] = useState('runs')
+  const [ckptDir, setCkptDir] = useState('checkpoints')
+  const [monitorMetric, setMonitorMetric] = useState('val_acc@1')
+  const [monitorMode, setMonitorMode] = useState<'max'|'min'>('max')
+  const [modelSuffix, setModelSuffix] = useState('')
+  const [maxPerClass, setMaxPerClass] = useState(10000)
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError(null)
     try {
-      const payload = JSON.parse(json)
-      await apiEx.configs.create({ project_id: projectId, name, group_id: groupId || undefined, config_json: payload })
+      const cfg = {
+        root,
+        model_flavour: modelFlavour,
+        loss_name: loss,
+        batch_size: Number(batchSize),
+        num_workers: Number(workers),
+        prefetch_factor: Number(prefetch),
+        persistent_workers: Boolean(persistentWorkers),
+        epochs: Number(epochs),
+        optimizer,
+        lr: Number(lr),
+        weight_decay: Number(weightDecay),
+        max_grad_norm: 1.0,
+        warmup_ratio: Number(warmup),
+        grad_accum_steps: Number(gradAccum),
+        seed: Number(seed),
+        autocast_dtype: 'torch.bfloat16',
+        load_pretrained: Boolean(loadPretrained),
+        run_name: null,
+        tb_root: tbRoot,
+        eval_topk: [3, 5],
+        model_suffix: modelSuffix,
+        freeze_backbone: false,
+        ckpt_dir: ckptDir,
+        monitor_metric: monitorMetric,
+        monitor_mode: monitorMode,
+        save_per_epoch_checkpoint: false,
+        max_datapoints_per_class: Number(maxPerClass),
+      }
+      await apiEx.configs.create({ project_id: projectId, name, group_id: groupId, config_json: cfg })
       onCreated()
+      toast.success('Config created')
     } catch (e: any) {
-      setError(e?.message || 'Invalid JSON')
+      toast.error(e?.message || 'Failed to create config')
     }
   }
+
   return (
-    <form className="p-4 space-y-3" onSubmit={onSubmit}>
-      <div>
-        <Label htmlFor="name">Name</Label>
-        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+    <form className="p-4 space-y-4" onSubmit={submit}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <Label htmlFor="name">Name</Label>
+          <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div>
+          <Label>Group</Label>
+          <Select value={groupId ?? 'none'} onValueChange={(v) => setGroupId(v === 'none' ? undefined : v)}>
+            <SelectTrigger><SelectValue placeholder="Select group (optional)" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {groups.map((g) => (<SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="sm:col-span-2">
+          <Label htmlFor="root">Dataset Root</Label>
+          <Input id="root" value={root} onChange={(e) => setRoot(e.target.value)} />
+        </div>
+        <div>
+          <Label>Model</Label>
+          <Select value={modelFlavour} onValueChange={setModelFlavour}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {models.map((m) => (<SelectItem key={m.label} value={m.hf_checkpoint_id}>{m.label}</SelectItem>))}
+              <SelectItem value="google/vit-base-patch16-224">google/vit-base-patch16-224</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Loss</Label>
+          <Select value={loss} onValueChange={setLoss}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cross_entropy">cross_entropy</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Batch Size</Label>
+          <Input type="number" value={batchSize} onChange={(e) => setBatchSize(Number(e.target.value))} />
+        </div>
+        <div>
+          <Label>Epochs</Label>
+          <Input type="number" value={epochs} onChange={(e) => setEpochs(Number(e.target.value))} />
+        </div>
+        <div>
+          <Label>Optimizer</Label>
+          <Select value={optimizer} onValueChange={setOptimizer}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="adam">adam</SelectItem>
+              <SelectItem value="adamw">adamw</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>LR</Label>
+          <Input type="number" step="any" value={lr} onChange={(e) => setLr(Number(e.target.value))} />
+        </div>
+        <div>
+          <Label>Weight Decay</Label>
+          <Input type="number" step="any" value={weightDecay} onChange={(e) => setWeightDecay(Number(e.target.value))} />
+        </div>
+        <div>
+          <Label>Warmup Ratio</Label>
+          <Input type="number" step="any" value={warmup} onChange={(e) => setWarmup(Number(e.target.value))} />
+        </div>
+        <div>
+          <Label>Num Workers</Label>
+          <Input type="number" value={workers} onChange={(e) => setWorkers(Number(e.target.value))} />
+        </div>
+        <div>
+          <Label>Prefetch Factor</Label>
+          <Input type="number" value={prefetch} onChange={(e) => setPrefetch(Number(e.target.value))} />
+        </div>
+        <div>
+          <Label>Grad Accum Steps</Label>
+          <Input type="number" value={gradAccum} onChange={(e) => setGradAccum(Number(e.target.value))} />
+        </div>
+        <div>
+          <Label>Seed</Label>
+          <Input type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value))} />
+        </div>
+        <div className="sm:col-span-2">
+          <Label>Load Pretrained</Label>
+          <div><Switch checked={loadPretrained} onCheckedChange={setLoadPretrained} /></div>
+        </div>
+        <div>
+          <Label>TB Root</Label>
+          <Input value={tbRoot} onChange={(e) => setTbRoot(e.target.value)} />
+        </div>
+        <div>
+          <Label>CKPT Dir</Label>
+          <Input value={ckptDir} onChange={(e) => setCkptDir(e.target.value)} />
+        </div>
+        <div>
+          <Label>Monitor Metric</Label>
+          <Select value={monitorMetric} onValueChange={setMonitorMetric}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="val_acc@1">val_acc@1</SelectItem>
+              <SelectItem value="val_loss">val_loss</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Monitor Mode</Label>
+          <Select value={monitorMode} onValueChange={(v) => setMonitorMode(v as 'max'|'min')}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="max">max</SelectItem>
+              <SelectItem value="min">min</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Model Suffix</Label>
+          <Input value={modelSuffix} onChange={(e) => setModelSuffix(e.target.value)} />
+        </div>
+        <div>
+          <Label>Max/cls</Label>
+          <Input type="number" value={maxPerClass} onChange={(e) => setMaxPerClass(Number(e.target.value))} />
+        </div>
       </div>
-      <div>
-        <Label htmlFor="group">Group ID (optional)</Label>
-        <Input id="group" value={groupId} onChange={(e) => setGroupId(e.target.value)} />
+      <div className="flex justify-end">
+        <Button type="submit">Create</Button>
       </div>
-      <div>
-        <Label htmlFor="json">Config JSON</Label>
-        <Textarea id="json" rows={14} value={json} onChange={(e) => setJson(e.target.value)} />
-      </div>
-      {error && <div className="text-sm text-red-600">{error}</div>}
-      <Button type="submit">Create</Button>
     </form>
   )
 }
