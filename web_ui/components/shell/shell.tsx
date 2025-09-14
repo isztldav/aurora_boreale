@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { NavigationMenu, NavigationMenuItem, NavigationMenuList, NavigationMenuTrigger, NavigationMenuContent, NavigationMenuLink, navigationMenuTriggerStyle } from '@/components/ui/navigation-menu'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
@@ -30,24 +29,7 @@ function TopBar() {
   return (
     <header className="border-b bg-background">
       <div className="px-4 py-3 flex items-center gap-3">
-        <NavigationMenu>
-          <NavigationMenuList>
-            <NavigationMenuItem>
-              <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                <Link href="/">Dashboard</Link>
-              </NavigationMenuLink>
-            </NavigationMenuItem>
-            <NavigationMenuItem>
-              <NavigationMenuTrigger>Resources</NavigationMenuTrigger>
-              <NavigationMenuContent className="p-2">
-                <div className="grid gap-1 w-[320px]">
-                  <Link className="px-2 py-1.5 rounded hover:bg-muted" href="/">Projects</Link>
-                  <Link className="px-2 py-1.5 rounded hover:bg-muted" href="/agents">Agents</Link>
-                </div>
-              </NavigationMenuContent>
-            </NavigationMenuItem>
-          </NavigationMenuList>
-        </NavigationMenu>
+        <span className="text-base font-medium">Dashboard</span>
         <div className="flex-1" />
         <div className="flex items-center gap-2">
           <div className="hidden md:block">
@@ -99,6 +81,9 @@ function Sidebar() {
     <aside className="border-r bg-card">
       <div className="p-4 text-lg font-semibold">Unified Dashboard</div>
       <ScrollArea className="h-[calc(100vh-64px)] px-2 pb-6">
+        <div className="px-1 pb-2">
+          <Button className="w-full">Quick Create</Button>
+        </div>
         <Accordion type="single" collapsible defaultValue="grp-main">
           <AccordionItem value="grp-main">
             <AccordionTrigger>Core</AccordionTrigger>
