@@ -22,10 +22,10 @@ services:
       dockerfile: src/dashboard/Dockerfile
     container_name: dashboard-web
     working_dir: /app
-    # Mount the app source and a shared logs volume (TensorBoard runs)
+    # Mount the app source and bind host ./runs for TensorBoard logs/checkpoints
     volumes:
       - ./:/app
-      - shared_logs:/app/runs
+      - ./runs:/app/runs
     environment:
       # Point the app to Postgres in the internal network
       DASHBOARD_DB_URL: postgresql+psycopg2://dashboard:dashboard@db:5432/dashboard
@@ -50,10 +50,10 @@ services:
       dockerfile: src/agent/Dockerfile
     container_name: training-agent
     working_dir: /app
-    # Mount the app source and the same shared logs volume for writing TB logs
+    # Mount the app source and the same host bind for writing TB logs
     volumes:
       - ./:/app
-      - shared_logs:/app/runs
+      - ./runs:/app/runs
       # Host datasets folder mounted inside the agent container
       - ./datasets:/app/datasets
     environment:
@@ -90,4 +90,3 @@ networks:
 
 volumes:
   pgdata:
-  shared_logs:

@@ -147,7 +147,7 @@ Notes
  - `/web/projects/{id}/augmentations` → augmentation registry
 
 Logging and checkpoints
-- All TensorBoard logs and checkpoints are placed under the shared volume mount inside containers (default: `/app/runs`).
+- All TensorBoard logs and checkpoints are placed under `/app/runs` inside containers, which is bind-mounted to `./runs` on the host by default.
 - The configured `tb_root` and `ckpt_dir` from the dashboard are respected as subpaths and are prefixed under the shared mount. Example: `tb_root="experiments/logs/foo"` becomes `/app/runs/experiments/logs/foo`.
 - Override the mount prefix with `SHARED_LOGS_DIR` if your path differs.
 
