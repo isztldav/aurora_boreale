@@ -70,38 +70,32 @@ python main.py
 tensorboard --logdir experiments/logs
 ~~~
 
-### Dashboard (MVP)
-- The web dashboard is a minimal FastAPI app to manage projects, configs, agents/GPUs and to queue runs (no Docker/agent execution yet).
-- It uses SQLite by default (`DASHBOARD_DB_URL` can point to Postgres later).
+### Modern Dashboard UI (Next.js + TypeScript)
+- The UI is now a standalone Next.js 14 app with TypeScript, Tailwind, shadcn-style components, Zustand, TanStack Query, Recharts, and a WebSocket client for live updates.
+- The FastAPI app continues to provide the backend API under `/api/v1` and now exposes a WebSocket endpoint at `/api/v1/ws`.
 
-Run the dashboard locally:
+Run the UI locally (requires Node 18+):
 
-~~~bash
-pip install fastapi "uvicorn[standard]" sqlalchemy pydantic tensorboard
-python run_dashboard.py
-# open http://localhost:8000/web/projects
-~~~
-
-Tailwind UI build (optional, recommended)
-- The templates use Tailwind utility classes. A prebuilt CSS is not committed to avoid bloating the repo. Build it locally:
-
-~~~bash
+```bash
 cd web_ui
-npm install  # requires network
-npm run build:css  # outputs ../src/dashboard/static/tw.css
-~~~
+npm install
+# Point the UI to the API (FastAPI runs on 8000 by default)
+export NEXT_PUBLIC_API_BASE=http://localhost:8000/api/v1
+npm run dev
+# open http://localhost:3000
+```
 
-- During development you can watch for changes:
+Backend (FastAPI) with hot reload:
 
-~~~bash
-npm run watch:css
-~~~
+```bash
+uvicorn src.dashboard.app:app --host 0.0.0.0 --port 8000 --reload
+# API: http://localhost:8000/api/v1
+# WebSocket: ws://localhost:8000/api/v1/ws
+```
 
-Note: If you don’t build Tailwind, pages will still render but unstyled. Build once to enable the modern look.
-
-Forms plugin
-- The UI uses Tailwind Forms plugin for polished inputs. It’s already listed in devDependencies.
-- If you installed dependencies before this change, run `npm install` again.
+Notes
+- CORS is enabled for `http://localhost:3000` by default; override via `DASHBOARD_CORS_ORIGINS` (comma-separated) on the web service.
+Legacy server-rendered pages have been removed; use the Next.js UI exclusively.
 
 Endpoints (selection):
 - `GET/POST /api/v1/projects` — list/create projects
@@ -111,14 +105,13 @@ Endpoints (selection):
 - `GET /api/v1/agents` — list agents; `GET /api/v1/agents/{agent_id}/gpus` — list GPUs for agent
   - Note: Agents and GPUs are auto-registered by the agent process; manual creation is disabled.
 
-UI Pages (simple Jinja templates):
-- `/web/projects` → projects list and create
-- `/web/projects/{id}/configs` → configs list and create (paste JSON)
-- `/web/projects/{id}/runs` → queue runs; inspect existing runs
-- `/web/runs/{run_id}` → run detail, simple state controls and logs placeholder
-- `/web/agents` → agents and GPU inventory (read-only; auto-registered)
- - `/web/projects/{id}/datasets` → dataset registry
- - `/web/projects/{id}/models` → model registry
+UI Pages (Next.js):
+- `/` Projects list
+- `/projects/[id]` Project overview with runs and chart
+- `/projects/[id]/configs` Configs list and creation (JSON)
+- `/projects/[id]/datasets` Dataset registry
+- `/projects/[id]/models` Model registry
+- `/agents` Agents and GPUs
 
 ### Docker Dev (web + agent)
 - Prereqs: Docker, Compose v2. For GPU, install NVIDIA drivers + NVIDIA Container Toolkit.
@@ -134,7 +127,7 @@ Run the full stack with hot reload for both web and agent:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up
-# Web: http://localhost:8000/web/projects
+# API Docs: http://localhost:8000/docs
 # DB (dev overlay): localhost:5432 (user/pass/db: dashboard)
 ```
 
@@ -144,7 +137,7 @@ Notes
 - Rebuild only when the corresponding `requirements.txt` changes.
 - Agent runs with `--reload`; GPUs are requested in `docker-compose.yml` via device reservations; set `GPU_INDEX` as needed.
 - The web talks to the agent on the internal Docker network; you don’t need to expose the agent port for normal use.
- - `/web/projects/{id}/augmentations` → augmentation registry
+
 
 Logging and checkpoints
 - All TensorBoard logs and checkpoints are placed under `/app/runs` inside containers, which is bind-mounted to `./runs` on the host by default.

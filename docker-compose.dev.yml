@@ -7,7 +7,7 @@ services:
     command: >
       bash -lc "uvicorn src.dashboard.app:app --host 0.0.0.0 --port 8000 --reload \
       --reload-dir /app/src \
-      --reload-include '*.py' --reload-include '*.html' --reload-include '*.css' --reload-include '*.js' \
+      --reload-include '*.py' \
       --log-level debug"
     environment:
       DASHBOARD_DEBUG: "1"
@@ -15,3 +15,17 @@ services:
   agent:
     # Enable code reload using uvicorn factory; pass GPU index via env
     command: bash -lc "uvicorn agent.server:create_app --host 0.0.0.0 --port 7070 --reload --factory"
+
+  ui:
+    image: node:20-alpine
+    container_name: dashboard-ui
+    working_dir: /app
+    volumes:
+      - ./web_ui:/app
+    environment:
+      NEXT_PUBLIC_API_BASE: http://127.0.0.1:8000/api/v1
+    command: sh -lc "npm install && npm run dev -- -p 3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - web

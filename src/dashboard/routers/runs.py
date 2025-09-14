@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from .. import models
 from ..schemas import RunCreate, RunOut
+from .ws import ws_manager
 from ..utils import resolve_run_name
 from common.experiments import unique_run_name
 from ..tensorboard import get_embedded_url_path
@@ -112,6 +113,17 @@ def create_run_from_config(config_id: str, payload: RunCreate, db: Session = Dep
     db.add(job)
     db.commit()
 
+    # Broadcast creation event
+    try:
+        payload = {
+            "type": "run.created",
+            "run": _serialize_run(run),
+        }
+        import anyio
+        anyio.from_thread.run(ws_manager.broadcast_json, payload, topic="runs")
+    except Exception:
+        pass
+
     return run
 
 
@@ -137,6 +149,16 @@ def cancel_run(run_id: str, db: Session = Depends(get_db)):
                 db.add(gpu)
     db.add(run)
     db.commit()
+    # Broadcast update
+    try:
+        payload = {
+            "type": "run.updated",
+            "run": _serialize_run(run),
+        }
+        import anyio
+        anyio.from_thread.run(ws_manager.broadcast_json, payload, topic="runs")
+    except Exception:
+        pass
     return {"ok": True, "state": run.state}
 
 
@@ -150,6 +172,16 @@ def start_run(run_id: str, db: Session = Depends(get_db)):
     run.started_at = datetime.utcnow()
     db.add(run)
     db.commit()
+    # Broadcast update
+    try:
+        payload = {
+            "type": "run.updated",
+            "run": _serialize_run(run),
+        }
+        import anyio
+        anyio.from_thread.run(ws_manager.broadcast_json, payload, topic="runs")
+    except Exception:
+        pass
     return {"ok": True, "state": run.state}
 
 
@@ -172,6 +204,16 @@ def finish_run(run_id: str, success: bool = True, db: Session = Depends(get_db))
                 db.add(gpu)
     db.add(run)
     db.commit()
+    # Broadcast update
+    try:
+        payload = {
+            "type": "run.updated",
+            "run": _serialize_run(run),
+        }
+        import anyio
+        anyio.from_thread.run(ws_manager.broadcast_json, payload, topic="runs")
+    except Exception:
+        pass
     return {"ok": True, "state": run.state}
 
 
@@ -192,6 +234,32 @@ def tensorboard_url(run_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Not found")
     url = get_embedded_url_path(str(run.id))
     return {"url": url}
+
+
+def _serialize_run(run: models.Run) -> dict:
+    return {
+        "id": str(run.id),
+        "project_id": str(run.project_id) if run.project_id else None,
+        "config_id": str(run.config_id) if run.config_id else None,
+        "group_id": str(run.group_id) if run.group_id else None,
+        "name": run.name,
+        "state": run.state,
+        "monitor_metric": run.monitor_metric,
+        "monitor_mode": run.monitor_mode,
+        "best_value": run.best_value,
+        "epoch": run.epoch,
+        "step": run.step,
+        "started_at": run.started_at.isoformat() if run.started_at else None,
+        "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+        "agent_id": str(run.agent_id) if run.agent_id else None,
+        "docker_image": run.docker_image,
+        "seed": run.seed,
+        "log_dir": run.log_dir,
+        "ckpt_dir": run.ckpt_dir,
+        "created_at": run.created_at.isoformat() if run.created_at else None,
+        "updated_at": run.updated_at.isoformat() if run.updated_at else None,
+        "gpu_indices": run.gpu_indices or [],
+    }
 
 
 def _agent_base_url(db: Session, run: models.Run) -> str:
