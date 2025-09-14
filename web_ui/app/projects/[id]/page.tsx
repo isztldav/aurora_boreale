@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, type Run } from '@/lib/api'
+import { api, apiEx, type Run } from '@/lib/api'
 import { Shell } from '@/components/shell/shell'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import { ProjectNav } from '@/components/projects/project-nav'
@@ -33,6 +33,7 @@ export default function ProjectPage() {
   const [states, setStates] = useState<Record<string, boolean>>({ running: true, queued: true, failed: true, succeeded: true, canceled: true })
   const [cols, setCols] = useState<Record<string, boolean>>({ best: true, epoch: true, started: true, finished: true })
   const [tbRunId, setTbRunId] = useState<string | null>(null)
+  const [cfgRun, setCfgRun] = useState<{ id: string; name: string; config_id: string } | null>(null)
   const filtered = useMemo(() => {
     const sel = new Set(Object.entries(states).filter(([, v]) => v).map(([k]) => k))
     return (runs || []).filter((r) => (
@@ -152,7 +153,14 @@ export default function ProjectPage() {
             <TBody>
               {filtered.map((r) => (
                 <TR key={r.id}>
-                  <TD className="font-medium">{r.name}</TD>
+                  <TD className="font-medium">
+                    <button
+                      className="text-left text-primary hover:underline"
+                      onClick={() => setCfgRun({ id: r.id, name: r.name, config_id: r.config_id })}
+                    >
+                      {r.name}
+                    </button>
+                  </TD>
                   <TD><RunStateBadge state={r.state} /></TD>
                   {cols.best && <TD>{r.best_value ?? '-'}</TD>}
                   {cols.epoch && <TD>{r.epoch ?? '-'}</TD>}
@@ -180,6 +188,8 @@ export default function ProjectPage() {
           </Table>
         )}
       </section>
+      {/* Run Config Viewer */}
+      <RunConfigDialog run={cfgRun} onOpenChange={(v) => !v && setCfgRun(null)} />
       <Dialog open={!!tbRunId} onOpenChange={(v) => !v && setTbRunId(null)}>
         <DialogContent className="max-w-[1200px] w-[95vw]">
           <div className="flex items-center justify-between mb-2">
@@ -200,4 +210,33 @@ export default function ProjectPage() {
 function RunStateBadge({ state }: { state: string }) {
   const variant = state === 'succeeded' ? 'success' : state === 'failed' ? 'error' : state === 'running' ? 'warning' : 'default'
   return <Badge variant={variant as any}>{state}</Badge>
+}
+
+function RunConfigDialog({ run, onOpenChange }: { run: { id: string; name: string; config_id: string } | null; onOpenChange: (open: boolean) => void }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['config', { id: run?.config_id }],
+    queryFn: () => apiEx.configs.get(run!.config_id),
+    enabled: !!run?.config_id,
+  })
+  return (
+    <Dialog open={!!run} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[900px] w-[95vw]">
+        <div className="flex items-center justify-between mb-2">
+          <DialogTitle>Run Config{run ? ` • ${run.name}` : ''}</DialogTitle>
+        </div>
+        {isLoading ? (
+          <div className="text-sm">Loading config…</div>
+        ) : error ? (
+          <div className="text-sm text-red-600">Failed to load config</div>
+        ) : data ? (
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">Config “{data.name}” • v{data.version} • {data.status}</div>
+            <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-[70vh]">
+{JSON.stringify(data.config_json, null, 2)}
+            </pre>
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  )
 }
