@@ -1,41 +1,134 @@
 "use client"
 
 import Link from 'next/link'
-import { useUI } from '@/lib/store'
+import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { NavigationMenu, NavigationMenuItem, NavigationMenuList, NavigationMenuTrigger, NavigationMenuContent, NavigationMenuLink, navigationMenuTriggerStyle } from '@/components/ui/navigation-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Input } from '@/components/ui/input'
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Button } from '@/components/ui/button'
+import { CommandPalette, useCommandPalette } from '@/components/command-palette'
 
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen grid grid-cols-[240px_1fr]">
       <Sidebar />
       <div className="flex flex-col min-h-screen">
-        <Header />
-        <main className="p-6 flex-1">{children}</main>
+        <TopBar />
+        <main className="p-6 flex-1 overflow-auto">{children}</main>
       </div>
     </div>
   )
 }
 
-function Sidebar() {
-  const { sidebarOpen } = useUI()
+function TopBar() {
   return (
-    <aside className={cn('border-r bg-card', sidebarOpen ? 'block' : 'block')}>
+    <header className="border-b bg-background">
+      <div className="px-4 py-3 flex items-center gap-3">
+        <NavigationMenu>
+          <NavigationMenuList>
+            <NavigationMenuItem>
+              <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+                <Link href="/">Dashboard</Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <NavigationMenuTrigger>Resources</NavigationMenuTrigger>
+              <NavigationMenuContent className="p-2">
+                <div className="grid gap-1 w-[320px]">
+                  <Link className="px-2 py-1.5 rounded hover:bg-muted" href="/">Projects</Link>
+                  <Link className="px-2 py-1.5 rounded hover:bg-muted" href="/agents">Agents</Link>
+                </div>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+        </NavigationMenu>
+        <div className="flex-1" />
+        <div className="flex items-center gap-2">
+          <div className="hidden md:block">
+            <Input placeholder="Search…" className="w-[260px]" />
+          </div>
+          <OpenCommandPalette />
+          <ThemeToggle />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Avatar>
+                  <AvatarFallback>U</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href="/settings">Settings</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem>Sign out</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </header>
+  )
+}
+
+function Sidebar() {
+  const pathname = usePathname()
+  const NavLink = ({ href, label, icon }: { href: string; label: string; icon?: React.ReactNode }) => (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Link
+            href={href}
+            className={cn('flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted text-sm', pathname === href ? 'bg-muted text-foreground' : 'text-muted-foreground')}
+          >
+            {icon}
+            <span>{label}</span>
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side="right">{label}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+
+  return (
+    <aside className="border-r bg-card">
       <div className="p-4 text-lg font-semibold">Unified Dashboard</div>
-      <nav className="px-2 space-y-1">
-        <Link className="block px-3 py-2 rounded-md hover:bg-muted" href="/">Projects</Link>
-        <Link className="block px-3 py-2 rounded-md hover:bg-muted" href="/agents">Agents</Link>
-      </nav>
+      <ScrollArea className="h-[calc(100vh-64px)] px-2 pb-6">
+        <Accordion type="single" collapsible defaultValue="grp-main">
+          <AccordionItem value="grp-main">
+            <AccordionTrigger>Core</AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-1">
+                <NavLink href="/" label="Projects" />
+                <NavLink href="/agents" label="Agents" />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="grp-admin">
+            <AccordionTrigger>Admin</AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-1">
+                <NavLink href="/settings" label="Settings" />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </ScrollArea>
     </aside>
   )
 }
 
-function Header() {
+function OpenCommandPalette() {
+  const { open, setOpen } = useCommandPalette()
   return (
-    <header className="border-b bg-background">
-      <div className="px-6 py-3 flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">Modern training platform UI</div>
-        <div className="text-sm">v1</div>
-      </div>
-    </header>
+    <>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)} title="Search (Ctrl+K)">Search</Button>
+      <CommandPalette open={open} onOpenChange={setOpen} />
+    </>
   )
 }

@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiEx, type Agent, type GPU } from '@/lib/api'
 import { Shell } from '@/components/shell/shell'
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink } from '@/components/ui/breadcrumb'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,9 @@ export default function AgentsPage() {
   const { data: agents, isLoading, error } = useQuery({ queryKey: ['agents'], queryFn: apiEx.agents.list })
   return (
     <Shell>
+      <Breadcrumb className="mb-4">
+        <BreadcrumbItem><BreadcrumbLink href="/">Dashboard</BreadcrumbLink></BreadcrumbItem>
+      </Breadcrumb>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Agents</h1>
       </div>
