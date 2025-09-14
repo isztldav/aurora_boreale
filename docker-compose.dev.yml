@@ -23,9 +23,20 @@ services:
     volumes:
       - ./web_ui:/app
     environment:
-      NEXT_PUBLIC_API_BASE: http://127.0.0.1:8000/api/v1
+      # Use reverse-proxied relative API path so browser hits Nginx and Nginx hits backend
+      NEXT_PUBLIC_API_BASE: /api/v1
     command: sh -lc "npm install && npm run dev -- -p 3000"
-    ports:
-      - "3000:3000"
+    # Do not expose UI directly; Nginx will reverse proxy it
     depends_on:
       - web
+
+  nginx:
+    image: nginx:alpine
+    container_name: dashboard-nginx
+    depends_on:
+      - ui
+      - web
+    volumes:
+      - ./deploy/nginx/ui.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8080:80"
