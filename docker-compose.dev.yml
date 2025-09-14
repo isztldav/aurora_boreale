@@ -17,18 +17,7 @@ services:
     command: bash -lc "uvicorn agent.server:create_app --host 0.0.0.0 --port 7070 --reload --factory"
 
   ui:
-    image: node:20-alpine
-    container_name: dashboard-ui
-    working_dir: /app
-    volumes:
-      - ./web_ui:/app
-    environment:
-      # Use reverse-proxied relative API path so browser hits Nginx and Nginx hits backend
-      NEXT_PUBLIC_API_BASE: /api/v1
     command: sh -lc "npm install && npm run dev -- -p 3000"
-    # Do not expose UI directly; Nginx will reverse proxy it
-    depends_on:
-      - web
 
   nginx:
     image: nginx:alpine

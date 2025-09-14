@@ -86,7 +86,7 @@ services:
       - internal
 
   ui:
-    image: node:20-alpine
+    image: node:24-alpine
     container_name: dashboard-ui
     working_dir: /app
     volumes:
