@@ -34,6 +34,7 @@ export default function ProjectPage() {
   const [cols, setCols] = useState<Record<string, boolean>>({ best: true, epoch: true, started: true, finished: true })
   const [tbRunId, setTbRunId] = useState<string | null>(null)
   const [cfgRun, setCfgRun] = useState<{ id: string; name: string; config_id: string } | null>(null)
+  const [openRunId, setOpenRunId] = useState<string | null>(null)
   const filtered = useMemo(() => {
     const sel = new Set(Object.entries(states).filter(([, v]) => v).map(([k]) => k))
     return (runs || []).filter((r) => (
@@ -167,6 +168,7 @@ export default function ProjectPage() {
                   {cols.started && <TD>{formatDateTime(r.started_at)}</TD>}
                   {cols.finished && <TD>{formatDateTime(r.finished_at)}</TD>}
                   <TD className="text-right space-x-2">
+                    <Button size="sm" onClick={() => setOpenRunId(r.id)}>Open</Button>
                     <Button variant="outline" size="sm" onClick={() => setTbRunId(r.id)}>TensorBoard</Button>
                     {r.state === 'queued' && (
                       <>
@@ -190,6 +192,8 @@ export default function ProjectPage() {
       </section>
       {/* Run Config Viewer */}
       <RunConfigDialog run={cfgRun} onOpenChange={(v) => !v && setCfgRun(null)} />
+      {/* Live Run Viewer */}
+      <RunLiveDialog runId={openRunId} onOpenChange={(v) => !v && setOpenRunId(null)} />
       <Dialog open={!!tbRunId} onOpenChange={(v) => !v && setTbRunId(null)}>
         <DialogContent className="max-w-[1200px] w-[95vw]">
           <div className="flex items-center justify-between mb-2">
@@ -236,6 +240,83 @@ function RunConfigDialog({ run, onOpenChange }: { run: { id: string; name: strin
             </pre>
           </div>
         ) : null}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function RunLiveDialog({ runId, onOpenChange }: { runId: string | null; onOpenChange: (open: boolean) => void }) {
+  const { data: status, error: statusErr, isLoading: loadingStatus } = useQuery({
+    queryKey: ['run-status', { runId }],
+    queryFn: () => api.runs.status(runId!),
+    enabled: !!runId,
+    refetchInterval: runId ? 2000 : false,
+  })
+  const { data: logs, error: logsErr, isLoading: loadingLogs } = useQuery({
+    queryKey: ['run-logs', { runId }],
+    queryFn: () => api.runs.logs(runId!, 300),
+    enabled: !!runId,
+    refetchInterval: runId ? 3000 : false,
+  })
+  const qc = useQueryClient()
+  const halt = async () => {
+    if (!runId) return
+    try {
+      await api.runs.halt(runId)
+      qc.invalidateQueries({ queryKey: ['run-status', { runId }] })
+    } catch {}
+  }
+  const progressPct = (() => {
+    const e = status?.epoch ?? 0
+    const t = status?.total_epochs ?? 0
+    if (!t || t <= 0) return 0
+    const curr = Math.min(Math.max(e, 0), t)
+    return Math.round((curr / t) * 100)
+  })()
+  return (
+    <Dialog open={!!runId} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[1100px] w-[95vw]">
+        <div className="flex items-center justify-between mb-2">
+          <DialogTitle>Run Live View</DialogTitle>
+          {status?.state === 'running' && (
+            <Button variant="destructive" size="sm" onClick={halt}>Halt</Button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-1 space-y-2">
+            {loadingStatus ? (
+              <div className="text-sm">Loading status…</div>
+            ) : statusErr ? (
+              <div className="text-sm text-red-600">Failed to load status. Agent may be offline or unassigned.</div>
+            ) : status ? (
+              <div className="space-y-2 text-sm">
+                <div className="font-medium">{status.name || '—'}</div>
+                <div>State: <span className="font-medium capitalize">{status.state}</span></div>
+                <div>Epoch: {status.epoch ?? '—'} / {status.total_epochs ?? '—'}</div>
+                <div>Elapsed: {status.elapsed_seconds != null ? `${Math.round(status.elapsed_seconds)}s` : '—'}</div>
+                <div>ETA: {status.eta_seconds != null ? `${Math.round(status.eta_seconds)}s` : '—'}</div>
+                <div className="mt-2">
+                  <div className="h-2 bg-muted rounded">
+                    <div className="h-2 bg-primary rounded" style={{ width: `${progressPct}%` }} />
+                  </div>
+                  <div className="text-xs mt-1 text-muted-foreground">{progressPct}%</div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+          <div className="lg:col-span-2">
+            <div className="text-xs text-muted-foreground mb-1">Agent Logs</div>
+            {loadingLogs ? (
+              <div className="text-sm">Loading logs…</div>
+            ) : logsErr ? (
+              <div className="text-sm text-red-600">Failed to load logs</div>
+            ) : (
+              <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-[70vh]">
+{(logs?.lines || []).join('\n')}
+              </pre>
+            )}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   )
