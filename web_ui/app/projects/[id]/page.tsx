@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { formatDateTime, shortId } from '@/lib/utils'
 import { makeRunsWS } from '@/lib/ws'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
@@ -31,6 +32,7 @@ export default function ProjectPage() {
   const [q, setQ] = useState('')
   const [states, setStates] = useState<Record<string, boolean>>({ running: true, queued: true, failed: true, succeeded: true, canceled: true })
   const [cols, setCols] = useState<Record<string, boolean>>({ best: true, epoch: true, started: true, finished: true })
+  const [tbRunId, setTbRunId] = useState<string | null>(null)
   const filtered = useMemo(() => {
     const sel = new Set(Object.entries(states).filter(([, v]) => v).map(([k]) => k))
     return (runs || []).filter((r) => (
@@ -157,9 +159,7 @@ export default function ProjectPage() {
                   {cols.started && <TD>{formatDateTime(r.started_at)}</TD>}
                   {cols.finished && <TD>{formatDateTime(r.finished_at)}</TD>}
                   <TD className="text-right space-x-2">
-                    <Button variant="outline" size="sm" onClick={async () => {
-                      try { const { url } = await api.runs.tensorboard(r.id); window.open(url, '_blank'); } catch {}
-                    }}>TensorBoard</Button>
+                    <Button variant="outline" size="sm" onClick={() => setTbRunId(r.id)}>TensorBoard</Button>
                     {r.state === 'queued' && (
                       <>
                         <Button size="sm" onClick={() => api.runs.start(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))}>Start</Button>
@@ -180,6 +180,19 @@ export default function ProjectPage() {
           </Table>
         )}
       </section>
+      <Dialog open={!!tbRunId} onOpenChange={(v) => !v && setTbRunId(null)}>
+        <DialogContent className="max-w-[1200px] w-[95vw]">
+          <div className="flex items-center justify-between mb-2">
+            <DialogTitle>TensorBoard</DialogTitle>
+            {tbRunId && (
+              <Button variant="outline" size="sm" onClick={() => window.open(`/tensorboard/${tbRunId}`, '_blank')}>Open in new tab</Button>
+            )}
+          </div>
+          {tbRunId ? (
+            <iframe src={`/tensorboard/${tbRunId}`} className="w-full h-[75vh] bg-white rounded" />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </Shell>
   )
 }

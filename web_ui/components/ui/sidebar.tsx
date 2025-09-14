@@ -1,0 +1,103 @@
+"use client"
+
+import * as React from 'react'
+import { cn } from '@/lib/utils'
+
+type SidebarContextValue = {
+  collapsed: boolean
+  toggle: () => void
+}
+
+const SidebarContext = React.createContext<SidebarContextValue | undefined>(undefined)
+
+export function SidebarProvider({ children }: { children: React.ReactNode }) {
+  const [collapsed, setCollapsed] = React.useState(false)
+  const value = React.useMemo(() => ({ collapsed, toggle: () => setCollapsed((v) => !v) }), [collapsed])
+  return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>
+}
+
+export function useSidebar() {
+  const ctx = React.useContext(SidebarContext)
+  if (!ctx) throw new Error('useSidebar must be used within SidebarProvider')
+  return ctx
+}
+
+export function Sidebar({ className, children }: React.HTMLAttributes<HTMLElement>) {
+  const { collapsed } = useSidebar()
+  return (
+    <aside
+      className={cn(
+        'border-r bg-card transition-all duration-200 ease-linear overflow-hidden',
+        collapsed ? 'w-14' : 'w-60',
+        className,
+      )}
+    >
+      {children}
+    </aside>
+  )
+}
+
+export function SidebarHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn('p-3', className)} {...props} />
+}
+
+export function SidebarContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn('px-2', className)} {...props} />
+}
+
+export function SidebarFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn('p-3 mt-auto', className)} {...props} />
+}
+
+export function SidebarMenu({ className, ...props }: React.HTMLAttributes<HTMLUListElement>) {
+  return <ul className={cn('flex flex-col gap-1', className)} {...props} />
+}
+
+export function SidebarMenuItem({ className, ...props }: React.HTMLAttributes<HTMLLIElement>) {
+  return <li className={cn('', className)} {...props} />
+}
+
+export function SidebarMenuButton({ className, children, asChild, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean }) {
+  const { collapsed } = useSidebar()
+  const Comp: any = asChild ? 'span' : 'button'
+  return (
+    <Comp
+      className={cn(
+        'w-full flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted transition-colors',
+        collapsed ? 'justify-center' : 'justify-start',
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </Comp>
+  )
+}
+
+export function SidebarGroup({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn('mt-2', className)} {...props} />
+}
+
+export function SidebarGroupLabel({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn('px-2 pb-1 text-xs text-muted-foreground', className)} {...props} />
+}
+
+export function SidebarGroupContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn('', className)} {...props} />
+}
+
+export function SidebarTrigger({ className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const { toggle } = useSidebar()
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      className={cn('inline-flex items-center justify-center rounded-md border bg-background px-2 py-1 text-sm hover:bg-muted', className)}
+      {...props}
+    >
+      ☰
+      <span className="sr-only">Toggle sidebar</span>
+    </button>
+  )
+}
+

@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
@@ -167,6 +167,7 @@ function NewProjectDialog() {
         <Button>New Project</Button>
       </DialogTrigger>
       <DialogContent>
+        <DialogTitle>New Project</DialogTitle>
         <div className="space-y-3">
           <div>
             <Label htmlFor="name">Name</Label>

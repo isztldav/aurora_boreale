@@ -13,6 +13,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 
 export default function ProjectConfigsPage() {
@@ -22,6 +24,7 @@ export default function ProjectConfigsPage() {
   const { data, isLoading, error } = useQuery({ queryKey: ['configs', { projectId }], queryFn: () => apiEx.configs.list(projectId) })
   const { data: groups } = useQuery({ queryKey: ['groups', { projectId }], queryFn: () => api.groups.list(projectId) })
   const { data: models } = useQuery({ queryKey: ['models', { projectId }], queryFn: () => apiEx.models.list(projectId) })
+  const { data: datasets } = useQuery({ queryKey: ['datasets', { projectId }], queryFn: () => apiEx.datasets.list(projectId) })
 
   return (
     <Shell>
@@ -46,7 +49,7 @@ export default function ProjectConfigsPage() {
                     <TD>{c.version}</TD>
                     <TD>{c.status}</TD>
                     <TD className="text-right">
-                      <Button size="sm" onClick={() => apiEx.configs.queueRun(c.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))}>Queue Run</Button>
+                      <QueueRunDialog projectId={projectId} configId={c.id} />
                     </TD>
                   </TR>
                 ))}
@@ -56,17 +59,18 @@ export default function ProjectConfigsPage() {
         </div>
         <div className="rounded-lg border">
           <div className="p-4 border-b"><h2 className="text-sm font-medium">New Config</h2></div>
-          <ConfigForm projectId={projectId} groups={groups || []} models={models || []} onCreated={() => qc.invalidateQueries({ queryKey: ['configs', { projectId }] })} />
+          <ConfigForm projectId={projectId} groups={groups || []} models={models || []} datasets={datasets || []} onCreated={() => qc.invalidateQueries({ queryKey: ['configs', { projectId }] })} />
         </div>
       </div>
     </Shell>
   )
 }
 
-function ConfigForm({ projectId, groups, models, onCreated }: { projectId: string; groups: { id: string; name: string }[]; models: { label: string; hf_checkpoint_id: string }[]; onCreated: () => void }) {
+function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projectId: string; groups: { id: string; name: string }[]; models: { label: string; hf_checkpoint_id: string }[]; datasets: { id: string; name: string; root_path: string }[]; onCreated: () => void }) {
   const [name, setName] = useState('baseline')
   const [groupId, setGroupId] = useState<string | undefined>(undefined)
-  const [root, setRoot] = useState('/app/datasets/your-dataset')
+  const [root, setRoot] = useState('')
+  const [datasetId, setDatasetId] = useState<string | 'custom' | undefined>(undefined)
   const [modelFlavour, setModelFlavour] = useState('google/vit-base-patch16-224')
   const [loss, setLoss] = useState('cross_entropy')
   const [batchSize, setBatchSize] = useState(64)
@@ -146,8 +150,37 @@ function ConfigForm({ projectId, groups, models, onCreated }: { projectId: strin
           </Select>
         </div>
         <div className="sm:col-span-2">
-          <Label htmlFor="root">Dataset Root</Label>
-          <Input id="root" value={root} onChange={(e) => setRoot(e.target.value)} />
+          <Label>Dataset</Label>
+          <Select
+            value={datasetId ?? (datasets[0]?.id ?? 'custom')}
+            onValueChange={(v) => {
+              if (v === 'custom') {
+                setDatasetId('custom')
+                setRoot('')
+              } else {
+                setDatasetId(v)
+                const d = datasets.find((x) => x.id === v)
+                setRoot(d?.root_path || '')
+              }
+            }}
+          >
+            <SelectTrigger><SelectValue placeholder="Select dataset" /></SelectTrigger>
+            <SelectContent>
+              {datasets.map((d) => (
+                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+              ))}
+              <SelectItem value="custom">Custom path…</SelectItem>
+            </SelectContent>
+          </Select>
+          {datasetId === 'custom' && (
+            <div className="mt-2">
+              <Label htmlFor="root">Dataset Root</Label>
+              <Input id="root" value={root} onChange={(e) => setRoot(e.target.value)} placeholder="/app/datasets/your-dataset" />
+            </div>
+          )}
+          {datasetId && datasetId !== 'custom' && root && (
+            <div className="mt-1 text-xs text-muted-foreground">Path: {root}</div>
+          )}
         </div>
         <div>
           <Label>Model</Label>
@@ -259,5 +292,78 @@ function ConfigForm({ projectId, groups, models, onCreated }: { projectId: strin
         <Button type="submit">Create</Button>
       </div>
     </form>
+  )
+}
+
+function QueueRunDialog({ projectId, configId }: { projectId: string; configId: string }) {
+  const qc = useQueryClient()
+  const { data: agents = [] } = useQuery({ queryKey: ['agents'], queryFn: apiEx.agents.list })
+  const [open, setOpen] = useState(false)
+  const [agentId, setAgentId] = useState<string | undefined>(undefined)
+  const { data: gpus = [] } = useQuery({ queryKey: ['gpus', { agentId }], queryFn: () => agentId ? apiEx.agents.gpus(agentId) : Promise.resolve([]), enabled: !!agentId })
+  const [gpuSel, setGpuSel] = useState<Record<number, boolean>>({})
+  const [docker, setDocker] = useState<string>('')
+  const [priority, setPriority] = useState<number>(0)
+
+  const toggleGpu = (idx: number, v: boolean) => setGpuSel((s) => ({ ...s, [idx]: v }))
+  const selected = Object.entries(gpuSel).filter(([, v]) => v).map(([k]) => Number(k))
+
+  const submit = async () => {
+    try {
+      await apiEx.configs.queueRun(configId, { agent_id: agentId, gpu_indices: selected, docker_image: docker || undefined, priority })
+      setOpen(false)
+      setGpuSel({})
+      await qc.invalidateQueries({ queryKey: ['runs', { projectId }] })
+      toast.success('Run queued')
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to queue run')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">Queue Run</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogTitle>Queue Run</DialogTitle>
+        <div className="space-y-3">
+          <div>
+            <Label>Agent</Label>
+            <Select value={agentId} onValueChange={setAgentId}>
+              <SelectTrigger><SelectValue placeholder="Select agent" /></SelectTrigger>
+              <SelectContent>
+                {agents.map((a) => (<SelectItem key={a.id} value={a.id}>{a.name || a.id}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>GPUs</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(gpus || []).map((g) => (
+                <label key={g.id} className="flex items-center gap-2 rounded border p-2 text-sm">
+                  <Checkbox disabled={g.is_allocated} checked={!!gpuSel[g.index]} onCheckedChange={(v) => toggleGpu(g.index, Boolean(v))} />
+                  <span>#{g.index} {g.name || 'GPU'} ({Math.round((g.total_mem_mb || 0)/1024)} GB){g.is_allocated ? ' • allocated' : ''}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Docker Image (optional)</Label>
+              <Input value={docker} onChange={(e) => setDocker(e.target.value)} placeholder="e.g. nvidia/cuda:12.1-runtime" />
+            </div>
+            <div>
+              <Label>Priority</Label>
+              <Input type="number" value={priority} onChange={(e) => setPriority(Number(e.target.value))} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={submit} disabled={!agentId}>Queue</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
