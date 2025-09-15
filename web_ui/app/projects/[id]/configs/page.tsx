@@ -363,10 +363,20 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
                       <Select value={modelFlavour} onValueChange={setModelFlavour}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
+                          {/* Models from project registry */}
                           {models.map((m) => (
                             <SelectItem key={m.label} value={m.hf_checkpoint_id}>{m.label}</SelectItem>
                           ))}
-                          <SelectItem value="google/vit-base-patch16-224">google/vit-base-patch16-224</SelectItem>
+
+                          {/* Models from global registry */}
+                          {registryData?.success && Object.entries(registryData.data.models || {}).map(([key, model]: [string, any]) => (
+                            <SelectItem key={key} value={key}>
+                              <div>
+                                <div className="font-medium">{model.name}</div>
+                                <div className="text-xs text-muted-foreground">{model.description}</div>
+                              </div>
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -375,7 +385,16 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
                       <Select value={loss} onValueChange={setLoss}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="cross_entropy">Cross Entropy</SelectItem>
+                          {registryData?.success ? Object.entries(registryData.data.losses || {}).map(([key, lossData]: [string, any]) => (
+                            <SelectItem key={key} value={key}>
+                              <div>
+                                <div className="font-medium">{lossData.name}</div>
+                                <div className="text-xs text-muted-foreground">{lossData.description}</div>
+                              </div>
+                            </SelectItem>
+                          )) : (
+                            <SelectItem value="cross_entropy">Cross Entropy</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -465,8 +484,19 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
                       <Select value={optimizer} onValueChange={setOptimizer}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="adam">Adam</SelectItem>
-                          <SelectItem value="adamw">AdamW</SelectItem>
+                          {registryData?.success ? Object.entries(registryData.data.optimizers || {}).map(([key, optimizerData]: [string, any]) => (
+                            <SelectItem key={key} value={key}>
+                              <div>
+                                <div className="font-medium">{optimizerData.name}</div>
+                                <div className="text-xs text-muted-foreground">{optimizerData.description}</div>
+                              </div>
+                            </SelectItem>
+                          )) : (
+                            <>
+                              <SelectItem value="adam">Adam</SelectItem>
+                              <SelectItem value="adamw">AdamW</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -554,11 +584,24 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
                             <SelectValue placeholder="Select GPU augmentation preset" />
                           </SelectTrigger>
                           <SelectContent>
-                            {registryData?.success && Object.entries(registryData.data.gpu_presets || {}).map(([key, preset]: [string, any]) => (
+                            <SelectItem value="none">
+                              <div>
+                                <div className="font-medium">None</div>
+                                <div className="text-xs text-muted-foreground">No GPU augmentation</div>
+                              </div>
+                            </SelectItem>
+                            {registryData?.success && Object.entries(registryData.data.gpu_presets || {})
+                              .filter(([key]) => key !== 'none')  // Remove duplicate 'none' option
+                              .map(([key, preset]: [string, any]) => (
                               <SelectItem key={key} value={key}>
                                 <div>
                                   <div className="font-medium">{preset.name}</div>
                                   <div className="text-xs text-muted-foreground">{preset.description}</div>
+                                  {preset.tags && (
+                                    <div className="text-xs text-blue-600 mt-1">
+                                      {preset.tags.join(', ')}
+                                    </div>
+                                  )}
                                 </div>
                               </SelectItem>
                             ))}
@@ -580,7 +623,11 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
                           rows={4}
                         />
                         <p className="text-xs text-muted-foreground mt-1">
-                          Custom GPU augmentation JSON. Available transforms: RandomHorizontalFlip, RandomVerticalFlip, RandomRotation, RandomAffine, RandomPerspective
+                          Custom GPU augmentation JSON. Available transforms: {
+                            registryData?.success
+                              ? Object.keys(registryData.data.gpu_transforms || {}).join(', ')
+                              : 'RandomHorizontalFlip, RandomVerticalFlip, RandomRotation, RandomAffine, RandomPerspective'
+                          }
                         </p>
                       </div>
                     )}
@@ -609,11 +656,24 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
                             <SelectValue placeholder="Select CPU color jitter preset" />
                           </SelectTrigger>
                           <SelectContent>
-                            {registryData?.success && Object.entries(registryData.data.cpu_color_presets || {}).map(([key, preset]: [string, any]) => (
+                            <SelectItem value="none">
+                              <div>
+                                <div className="font-medium">None</div>
+                                <div className="text-xs text-muted-foreground">No color jitter</div>
+                              </div>
+                            </SelectItem>
+                            {registryData?.success && Object.entries(registryData.data.cpu_color_presets || {})
+                              .filter(([key]) => key !== 'none')  // Remove duplicate 'none' option
+                              .map(([key, preset]: [string, any]) => (
                               <SelectItem key={key} value={key}>
                                 <div>
                                   <div className="font-medium">{preset.name}</div>
                                   <div className="text-xs text-muted-foreground">{preset.description}</div>
+                                  {preset.tags && (
+                                    <div className="text-xs text-blue-600 mt-1">
+                                      {preset.tags.join(', ')}
+                                    </div>
+                                  )}
                                 </div>
                               </SelectItem>
                             ))}
