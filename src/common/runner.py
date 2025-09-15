@@ -87,7 +87,7 @@ def run_experiment(
         torch.backends.cudnn.benchmark = True
 
     # Data
-    train_tfms, eval_tfms = build_transforms(cfg.model_flavour)
+    train_tfms, eval_tfms = build_transforms(cfg.model_flavour, getattr(cfg, "cpu_color_jitter", None))
     train_loader, val_loader, test_loader = build_dataloaders(
         root=cfg.root, train_tfms=train_tfms, eval_tfms=eval_tfms, cfg=cfg
     )
@@ -97,7 +97,8 @@ def run_experiment(
         test_loader = CUDAPrefetchLoader(test_loader)  # noqa: F841
 
     # Build GPU-batched training augmentations (size-preserving, geometric only)
-    train_batch_tf = None #build_gpu_train_augment().to(device=device)
+    # Only enabled when provided via cfg.gpu_batch_aug (kept identity otherwise)
+    train_batch_tf = build_gpu_train_augment(getattr(cfg, "gpu_batch_aug", None)).to(device=device)
 
     label2id, id2label = build_label_maps(train_loader.loader.dataset)  # type: ignore[attr-defined]
     num_labels = len(label2id)

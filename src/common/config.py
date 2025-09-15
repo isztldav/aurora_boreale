@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict
-from typing import Optional, Tuple, Any, Union, Iterable
+from typing import Optional, Tuple, Any, Union, Iterable, Dict
 import os
 import json
 import torch
@@ -43,6 +43,15 @@ class TrainConfig:
 
     # Dataset
     max_datapoints_per_class: Union[int, Iterable] = 10_000
+
+    # Optional GPU-batched augmentations (Kornia) applied on training batches.
+    # Provide a JSON-serializable spec, e.g. {"preset": "cfp_dr_v1"} or
+    # {"ops": [{"name": "RandomHorizontalFlip", "p": 0.5}, ...]}
+    gpu_batch_aug: Optional[Dict[str, Any]] = None
+
+    # Optional CPU-side color jitter (pre-normalization), applied on training only.
+    # Example: {"preset": "cfp_color_v1"} or {"params": {"brightness": 0.15, "contrast": 0.15, "saturation": 0.1, "hue": 0.02}, "p": 0.8}
+    cpu_color_jitter: Optional[Dict[str, Any]] = None
 
 
 def _convert_jsonable(obj: Any):
