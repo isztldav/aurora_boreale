@@ -159,6 +159,7 @@ class ModelRegistry(TimestampMixin, Base):
     project_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("projects.id", ondelete="CASCADE"))
     label: Mapped[str] = mapped_column(String(255), nullable=False)
     hf_checkpoint_id: Mapped[str] = mapped_column(String(512), nullable=False)
+    hf_token: Mapped[str | None] = mapped_column(String(256))  # HuggingFace token for private models
     notes: Mapped[str | None] = mapped_column(Text)
     default_pretrained: Mapped[bool] = mapped_column(Boolean, default=True)
 

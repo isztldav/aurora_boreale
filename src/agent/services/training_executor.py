@@ -5,6 +5,8 @@ import traceback
 from datetime import datetime, timezone
 from typing import Optional, Callable
 
+from huggingface_hub import login, logout
+
 from dashboard.db import SessionLocal
 from dashboard import models
 from common.config import TrainConfig
@@ -62,6 +64,7 @@ class TrainingExecutor:
             return False
         finally:
             db.close()
+            logout()
 
     def _build_train_config(self, db, run_context: RunContext) -> TrainConfig:
         """Build TrainConfig from database configuration."""
@@ -74,12 +77,19 @@ class TrainingExecutor:
         # Handle autocast dtype conversion
         self._convert_autocast_dtype(cfg_dict)
 
+        # Fetch HF token from model registry if model uses one
+        hf_token = self._get_hf_token_for_model(db, cfg_row.project_id, cfg_dict.get("model_flavour"))
+
+        if hf_token:
+            login(token=hf_token)
+
         # Set run-specific parameters
         cfg_dict.update({
             "run_name": run_context.run_name,
             "tb_root": run_context.log_dir,
             "ckpt_dir": run_context.ckpt_dir,
             "root": self._sanitize_dataset_path(cfg_dict.get("root")),
+            "hf_token": True if hf_token else False,  # Add HF token for model loading
         })
 
         return TrainConfig(**cfg_dict)
@@ -261,3 +271,24 @@ class TrainingExecutor:
             if gpu:
                 gpu.is_allocated = False
                 db.add(gpu)
+
+    def _get_hf_token_for_model(self, db, project_id: str, model_flavour: Optional[str]) -> Optional[str]:
+        """Get HuggingFace token for a specific model from the model registry."""
+        if not model_flavour:
+            return None
+
+        # Look up the model in the project's model registry
+        model_registry = (
+            db.query(models.ModelRegistry)
+            .filter(
+                models.ModelRegistry.project_id == project_id,
+                models.ModelRegistry.hf_checkpoint_id == model_flavour
+            )
+            .first()
+        )
+
+        if model_registry and model_registry.hf_token:
+            print(f"[executor] Using HF token for private model: {model_flavour}")
+            return model_registry.hf_token
+
+        return None

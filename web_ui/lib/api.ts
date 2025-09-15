@@ -83,6 +83,7 @@ export type Model = {
   project_id: string
   label: string
   hf_checkpoint_id: string
+  has_token: boolean  // Indicates if model has a token without exposing it
   notes?: string | null
   default_pretrained: boolean
   created_at: string
@@ -138,8 +139,11 @@ export const apiEx = {
   },
   models: {
     list: (projectId: string) => http<Model[]>(`/projects/${projectId}/models`),
-    create: (projectId: string, payload: { label: string; hf_checkpoint_id: string; notes?: string; default_pretrained?: boolean }) =>
+    get: (modelId: string) => http<Model>(`/projects/models/${modelId}`),
+    create: (projectId: string, payload: { label: string; hf_checkpoint_id: string; hf_token?: string; notes?: string; default_pretrained?: boolean }) =>
       http<Model>(`/projects/${projectId}/models`, { method: 'POST', body: JSON.stringify(payload) }),
+    update: (modelId: string, payload: { label?: string; hf_checkpoint_id?: string; hf_token?: string; notes?: string; default_pretrained?: boolean }) =>
+      http<Model>(`/projects/models/${modelId}`, { method: 'PUT', body: JSON.stringify(payload) }),
     delete: (modelId: string) => http(`/projects/models/${modelId}`, { method: 'DELETE' }),
   },
   agents: {

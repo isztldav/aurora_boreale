@@ -205,8 +205,17 @@ class DatasetOut(BaseModel):
 class ModelCreate(BaseModel):
     label: str
     hf_checkpoint_id: str
+    hf_token: str | None = None
     notes: str | None = None
     default_pretrained: bool = True
+
+
+class ModelUpdate(BaseModel):
+    label: str | None = None
+    hf_checkpoint_id: str | None = None
+    hf_token: str | None = None
+    notes: str | None = None
+    default_pretrained: bool | None = None
 
 
 class ModelOut(BaseModel):
@@ -214,6 +223,23 @@ class ModelOut(BaseModel):
     project_id: UUID
     label: str
     hf_checkpoint_id: str
+    hf_token: str | None
+    notes: str | None
+    default_pretrained: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ModelOutSafe(BaseModel):
+    """Model output without sensitive HF token for frontend"""
+    id: UUID
+    project_id: UUID
+    label: str
+    hf_checkpoint_id: str
+    has_token: bool  # Indicates if model has a token without exposing it
     notes: str | None
     default_pretrained: bool
     created_at: datetime

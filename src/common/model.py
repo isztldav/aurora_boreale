@@ -1,4 +1,5 @@
 from transformers import AutoModelForImageClassification, AutoConfig
+from typing import Optional
 
 def _freeze_backbone(model):
     """
@@ -42,7 +43,7 @@ def build_model(model_flavour: str, num_labels: int, id2label: dict, label2id: d
         load_pretrained (bool): 
             If True, load pretrained weights for the model. 
             If False, initialize the model from scratch using the configuration.
-        freeze_backbone (bool, optional): 
+        freeze_backbone (bool, optional):
             Intended to control whether the feature extractor backbone should be frozen during training.
             Defaults to False.
 
@@ -50,7 +51,6 @@ def build_model(model_flavour: str, num_labels: int, id2label: dict, label2id: d
         AutoModelForImageClassification:
             A Hugging Face image classification model, ready for training or inference.
     """
-
     if load_pretrained:
         model = AutoModelForImageClassification.from_pretrained(
             model_flavour,
@@ -59,13 +59,13 @@ def build_model(model_flavour: str, num_labels: int, id2label: dict, label2id: d
             label2id=label2id,
             ignore_mismatched_sizes=True
         )
-    
+
     else:
         cfg = AutoConfig.from_pretrained(
             model_flavour,
             num_labels=num_labels,
             id2label=id2label,
-            label2id=label2id,
+            label2id=label2id
         )
         model = AutoModelForImageClassification.from_config(cfg)
 
