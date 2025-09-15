@@ -50,7 +50,7 @@ function AgentCard({ agent }: { agent: Agent }) {
       </CardHeader>
       <CardContent>
         <div className="mb-3 text-sm">GPUs: {gpus?.length ?? 0} • Allocated: {alloc}</div>
-        <div className="space-y-2">
+        <div className="flex flex-wrap gap-2">
           {(gpus || []).map((g) => (
             <GpuBadge key={g.id} g={g} agentId={agent.id} />
           ))}
@@ -61,16 +61,8 @@ function AgentCard({ agent }: { agent: Agent }) {
 }
 
 function GpuBadge({ g, agentId }: { g: GPU; agentId: string }) {
-  const qc = useQueryClient()
   const variant = g.is_allocated ? 'warning' : 'success'
   return (
-    <div className="flex items-center gap-2">
-      <Badge variant={variant as any}>{g.index}: {g.name || 'GPU'} ({Math.round((g.total_mem_mb || 0) / 1024)} GB)</Badge>
-      {g.is_allocated ? (
-        <Button size="sm" variant="outline" onClick={() => apiEx.agents.release(agentId, g.index).then(() => qc.invalidateQueries({ queryKey: ['gpus', { agentId }] }))}>Release</Button>
-      ) : (
-        <Button size="sm" onClick={() => apiEx.agents.reserve(agentId, g.index).then(() => qc.invalidateQueries({ queryKey: ['gpus', { agentId }] }))}>Reserve</Button>
-      )}
-    </div>
+    <Badge variant={variant as any}>{g.index}: {g.name || 'GPU'} ({Math.round((g.total_mem_mb || 0) / 1024)} GB)</Badge>
   )
 }

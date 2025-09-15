@@ -113,6 +113,15 @@ class GPUTransformRegistry(Registry):
 
     def register_defaults(self):
         """Register default GPU transforms."""
+        # No-op transformation (empty/identity)
+        self.register('Identity', TransformSpec(
+            name='Identity',
+            description='Identity transformation - no augmentation applied',
+            parameters=[],
+            category='none',
+            tags=['safe', 'identity', 'no-op']
+        ))
+
         # Geometric transforms (safe, size-preserving)
         self.register('RandomHorizontalFlip', TransformSpec(
             name='RandomHorizontalFlip',
@@ -176,6 +185,18 @@ class GPUPresetRegistry(Registry):
 
     def register_defaults(self):
         """Register default GPU augmentation presets."""
+        self.register('none', PresetSpec(
+            name='none',
+            description='No GPU augmentation - identity transformation only',
+            config={
+                'ops': [
+                    {'name': 'Identity'}
+                ]
+            },
+            category='none',
+            tags=['identity', 'no-augmentation', 'baseline']
+        ))
+
         self.register('cfp_dr_v1', PresetSpec(
             name='cfp_dr_v1',
             description='Color fundus photography preset for diabetic retinopathy detection',
@@ -235,6 +256,22 @@ class CPUColorJitterRegistry(Registry):
 
     def register_defaults(self):
         """Register default CPU color jitter presets."""
+        self.register('none', PresetSpec(
+            name='none',
+            description='No color jitter - no color augmentation applied',
+            config={
+                'params': {
+                    'brightness': 0.0,
+                    'contrast': 0.0,
+                    'saturation': 0.0,
+                    'hue': 0.0
+                },
+                'p': 0.0
+            },
+            category='none',
+            tags=['identity', 'no-augmentation', 'baseline']
+        ))
+
         self.register('cfp_color_v1', PresetSpec(
             name='cfp_color_v1',
             description='Mild color jitter suitable for color fundus photography',

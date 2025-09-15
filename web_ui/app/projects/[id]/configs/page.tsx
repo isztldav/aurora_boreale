@@ -113,8 +113,8 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
   const [cpuColorJitter, setCpuColorJitter] = useState('')
   const [gpuPresetMode, setGpuPresetMode] = useState(true) // true for presets, false for custom
   const [cpuPresetMode, setCpuPresetMode] = useState(true)
-  const [selectedGpuPreset, setSelectedGpuPreset] = useState('cfp_dr_v1')
-  const [selectedCpuPreset, setSelectedCpuPreset] = useState('cfp_color_v1')
+  const [selectedGpuPreset, setSelectedGpuPreset] = useState('none')
+  const [selectedCpuPreset, setSelectedCpuPreset] = useState('none')
 
   // Registry data
   const { data: registryData } = useQuery({
@@ -775,7 +775,7 @@ function QueueRunDialog({ projectId, configId }: { projectId: string; configId: 
             <div className="grid grid-cols-2 gap-2">
               {(gpus || []).map((g) => (
                 <label key={g.id} className="flex items-center gap-2 rounded border p-2 text-sm">
-                  <Checkbox disabled={g.is_allocated} checked={!!gpuSel[g.index]} onCheckedChange={(v) => toggleGpu(g.index, Boolean(v))} />
+                  <Checkbox checked={!!gpuSel[g.index]} onCheckedChange={(v) => toggleGpu(g.index, Boolean(v))} />
                   <span>#{g.index} {g.name || 'GPU'} ({Math.round((g.total_mem_mb || 0)/1024)} GB){g.is_allocated ? ' • allocated' : ''}</span>
                 </label>
               ))}
