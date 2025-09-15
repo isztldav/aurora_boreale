@@ -42,6 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(runs.router, prefix="/api/v1")
     app.include_router(agents.router, prefix="/api/v1")
     app.include_router(datasets.router, prefix="/api/v1")
+    app.include_router(datasets.browse_router, prefix="/api/v1")
     app.include_router(registry_models.router, prefix="/api/v1")
     app.include_router(augmentations.router, prefix="/api/v1")
     from .routers import tensorboard as tb_router
