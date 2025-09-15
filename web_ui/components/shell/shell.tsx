@@ -11,7 +11,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import { CommandPalette, useCommandPalette } from '@/components/command-palette'
-import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarTrigger } from '@/components/ui/sidebar'
+import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
+import { LayoutDashboard, Users, Settings, Plus } from 'lucide-react'
 
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -63,60 +64,134 @@ function TopBar() {
 
 function AppSidebar() {
   const pathname = usePathname()
-  const NavLink = ({ href, label, icon }: { href: string; label: string; icon?: React.ReactNode }) => (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Link href={href} className={cn('flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted', pathname === href ? 'bg-muted text-foreground' : 'text-muted-foreground')}>
-            {icon}<span>{label}</span>
-          </Link>
-        </TooltipTrigger>
-        <TooltipContent side="right">{label}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  )
+  const { collapsed } = useSidebar()
+
+  const NavLink = ({ href, label, icon }: { href: string; label: string; icon: React.ReactNode }) => {
+    const isActive = pathname === href
+    const linkContent = (
+      <Link
+        href={href}
+        className={cn(
+          'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted',
+          isActive ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground hover:text-foreground',
+          collapsed ? 'justify-center px-2' : 'justify-start'
+        )}
+      >
+        <div className="flex-shrink-0">{icon}</div>
+        {!collapsed && <span className="truncate">{label}</span>}
+      </Link>
+    )
+
+    if (collapsed) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {linkContent}
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              {label}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )
+    }
+
+    return linkContent
+  }
 
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="px-2 text-base font-semibold">Unified Dashboard</div>
+        {collapsed ? (
+          <div className="flex justify-center">
+            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-primary-foreground text-sm font-bold">
+              U
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm font-semibold truncate">Unified Dashboard</div>
+        )}
       </SidebarHeader>
-      <SidebarContent>
-        <div className="px-1 pb-3">
-          <Button className="w-full">Quick Create</Button>
+
+      <SidebarContent className="py-4">
+        {/* Quick Create Button */}
+        <div className="px-2 mb-4">
+          {collapsed ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="icon" className="w-full">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  Quick Create
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <Button className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
+              Quick Create
+            </Button>
+          )}
         </div>
+
+        {/* Core Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel>Core</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <NavLink href="/" label="Projects" />
+                  <NavLink
+                    href="/"
+                    label="Projects"
+                    icon={<LayoutDashboard className="h-4 w-4" />}
+                  />
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <NavLink href="/agents" label="Agents" />
+                  <NavLink
+                    href="/agents"
+                    label="Agents"
+                    icon={<Users className="h-4 w-4" />}
+                  />
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Admin Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel>Admin</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <NavLink href="/settings" label="Settings" />
+                  <NavLink
+                    href="/settings"
+                    label="Settings"
+                    icon={<Settings className="h-4 w-4" />}
+                  />
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
       <SidebarFooter>
-        <div className="text-xs text-muted-foreground">v1</div>
+        {collapsed ? (
+          <div className="flex justify-center">
+            <div className="text-xs text-muted-foreground">v1</div>
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground">v1</div>
+        )}
       </SidebarFooter>
     </Sidebar>
   )

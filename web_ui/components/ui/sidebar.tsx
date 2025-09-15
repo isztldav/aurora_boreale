@@ -38,7 +38,17 @@ export function Sidebar({ className, children }: React.HTMLAttributes<HTMLElemen
 }
 
 export function SidebarHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('p-3', className)} {...props} />
+  const { collapsed } = useSidebar()
+  return (
+    <div
+      className={cn(
+        'p-3 border-b',
+        collapsed ? 'text-center' : '',
+        className
+      )}
+      {...props}
+    />
+  )
 }
 
 export function SidebarContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
@@ -58,13 +68,12 @@ export function SidebarMenuItem({ className, ...props }: React.HTMLAttributes<HT
 }
 
 export function SidebarMenuButton({ className, children, asChild, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean }) {
-  const { collapsed } = useSidebar()
   const Comp: any = asChild ? 'span' : 'button'
   return (
     <Comp
       className={cn(
-        'w-full flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted transition-colors',
-        collapsed ? 'justify-center' : 'justify-start',
+        'w-full',
+        !asChild && 'flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted transition-colors',
         className,
       )}
       {...props}
@@ -78,8 +87,14 @@ export function SidebarGroup({ className, ...props }: React.HTMLAttributes<HTMLD
   return <div className={cn('mt-2', className)} {...props} />
 }
 
-export function SidebarGroupLabel({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('px-2 pb-1 text-xs text-muted-foreground', className)} {...props} />
+export function SidebarGroupLabel({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  const { collapsed } = useSidebar()
+  if (collapsed) return null
+  return (
+    <div className={cn('px-2 pb-1 text-xs text-muted-foreground', className)} {...props}>
+      {children}
+    </div>
+  )
 }
 
 export function SidebarGroupContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
@@ -92,10 +107,26 @@ export function SidebarTrigger({ className, ...props }: React.ButtonHTMLAttribut
     <button
       type="button"
       onClick={toggle}
-      className={cn('inline-flex items-center justify-center rounded-md border bg-background px-2 py-1 text-sm hover:bg-muted', className)}
+      className={cn(
+        'inline-flex items-center justify-center rounded-md border bg-background px-2 py-1.5 text-sm hover:bg-muted transition-colors',
+        'w-8 h-8',
+        className
+      )}
       {...props}
     >
-      ☰
+      <svg
+        className="h-4 w-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M4 6h16M4 12h16M4 18h16"
+        />
+      </svg>
       <span className="sr-only">Toggle sidebar</span>
     </button>
   )
