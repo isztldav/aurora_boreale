@@ -88,11 +88,18 @@ def build_gpu_train_augment(spec: Optional[Dict[str, Any]] = None) -> torch.nn.M
 
     - If Kornia is unavailable or ``spec`` is None/empty, returns identity.
     - Spec may be {"preset": "cfp_dr_v1"} or {"ops": [{"name": "Random...", ...}, ...]}
+    - Now validates against the centralized registry
 
     Notes: Assumes input is already float32 and normalized on CPU; therefore
     we intentionally restrict to geometric-only operations here.
     """
     if not _HAS_KORNIA or not spec:
+        return _Identity()
+
+    # Validate spec against registry
+    is_valid, errors = validate_gpu_augmentation_spec(spec)
+    if not is_valid:
+        print(f"[gpu_transforms] Invalid augmentation spec: {errors}")
         return _Identity()
 
     # Preset takes precedence if provided
@@ -105,3 +112,13 @@ def build_gpu_train_augment(spec: Optional[Dict[str, Any]] = None) -> torch.nn.M
         return _build_from_ops(spec["ops"])  # type: ignore[index]
 
     return _Identity()
+
+
+def get_supported_transforms() -> Dict[str, Any]:
+    """Get all supported GPU transforms for UI consumption."""
+    return gpu_transforms.to_json()
+
+
+def get_available_presets() -> Dict[str, Any]:
+    """Get all available GPU augmentation presets for UI consumption."""
+    return gpu_presets.to_json()

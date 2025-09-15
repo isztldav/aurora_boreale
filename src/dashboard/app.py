@@ -4,7 +4,7 @@ from starlette.middleware.wsgi import WSGIMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
 from .db import init_db
-from .routers import projects, groups, configs, runs, agents, auth, datasets, registry_models, augmentations
+from .routers import projects, groups, configs, runs, agents, auth, datasets, registry_models, augmentations, registry
 from .db import SessionLocal
 from . import models
 
@@ -45,6 +45,7 @@ def create_app() -> FastAPI:
     app.include_router(datasets.browse_router, prefix="/api/v1")
     app.include_router(registry_models.router, prefix="/api/v1")
     app.include_router(augmentations.router, prefix="/api/v1")
+    app.include_router(registry.router, prefix="/api/v1")
     from .routers import tensorboard as tb_router
     app.include_router(tb_router.router, prefix="/api/v1")
     # WebSocket endpoint for live updates

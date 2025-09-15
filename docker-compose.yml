@@ -94,7 +94,7 @@ services:
     environment:
       # Use reverse-proxied relative API path; Nginx will route /api -> web:8000
       NEXT_PUBLIC_API_BASE: /api/v1
-    command: sh -lc "npm install && npm run build && npm run start -- -p 3000"
+    command: sh -lc "npm install && npm run build && npm run start"
     depends_on:
       - web
     networks:

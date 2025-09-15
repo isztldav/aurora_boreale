@@ -111,6 +111,17 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
   // Augmentation Configuration
   const [gpuBatchAug, setGpuBatchAug] = useState('')
   const [cpuColorJitter, setCpuColorJitter] = useState('')
+  const [gpuPresetMode, setGpuPresetMode] = useState(true) // true for presets, false for custom
+  const [cpuPresetMode, setCpuPresetMode] = useState(true)
+  const [selectedGpuPreset, setSelectedGpuPreset] = useState('cfp_dr_v1')
+  const [selectedCpuPreset, setSelectedCpuPreset] = useState('cfp_color_v1')
+
+  // Registry data
+  const { data: registryData } = useQuery({
+    queryKey: ['registry'],
+    queryFn: () => fetch('/api/v1/registry/export').then(res => res.json()),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
 
   // Monitoring & Checkpoints
   const [monitorMetric, setMonitorMetric] = useState('val_acc@1')
@@ -123,11 +134,13 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      // Parse augmentation JSON if provided
+      // Parse augmentation configurations
       let gpuBatchAugObj = null
       let cpuColorJitterObj = null
 
-      if (gpuBatchAug.trim()) {
+      if (gpuPresetMode && selectedGpuPreset) {
+        gpuBatchAugObj = { preset: selectedGpuPreset }
+      } else if (!gpuPresetMode && gpuBatchAug.trim()) {
         try {
           gpuBatchAugObj = JSON.parse(gpuBatchAug)
         } catch (err) {
@@ -136,7 +149,9 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
         }
       }
 
-      if (cpuColorJitter.trim()) {
+      if (cpuPresetMode && selectedCpuPreset) {
+        cpuColorJitterObj = { preset: selectedCpuPreset }
+      } else if (!cpuPresetMode && cpuColorJitter.trim()) {
         try {
           cpuColorJitterObj = JSON.parse(cpuColorJitter)
         } catch (err) {
@@ -516,33 +531,116 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Data Augmentation</CardTitle>
-                  <CardDescription>Configure GPU batch augmentations and CPU color jitter (JSON format)</CardDescription>
+                  <CardDescription>Configure GPU batch augmentations and CPU color jitter using presets or custom JSON</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label>GPU Batch Augmentation (Optional)</Label>
-                    <Textarea
-                      value={gpuBatchAug}
-                      onChange={(e) => setGpuBatchAug(e.target.value)}
-                      placeholder='{"preset": "cfp_dr_v1"} or {"ops": [{"name": "RandomHorizontalFlip", "p": 0.5}]}'
-                      className="font-mono text-sm"
-                      rows={3}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Kornia-based GPU augmentations applied to training batches. Use presets or custom ops.
+                <CardContent className="space-y-6">
+                  {/* GPU Batch Augmentation */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-medium">GPU Batch Augmentation (Optional)</Label>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-muted-foreground">Presets</span>
+                        <Switch
+                          checked={gpuPresetMode}
+                          onCheckedChange={setGpuPresetMode}
+                        />
+                      </div>
+                    </div>
+
+                    {gpuPresetMode ? (
+                      <div>
+                        <Select value={selectedGpuPreset} onValueChange={setSelectedGpuPreset}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select GPU augmentation preset" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {registryData?.success && Object.entries(registryData.data.gpu_presets || {}).map(([key, preset]: [string, any]) => (
+                              <SelectItem key={key} value={key}>
+                                <div>
+                                  <div className="font-medium">{preset.name}</div>
+                                  <div className="text-xs text-muted-foreground">{preset.description}</div>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {selectedGpuPreset && registryData?.success && (
+                          <div className="mt-2 p-2 bg-muted rounded text-xs font-mono">
+                            {JSON.stringify({ preset: selectedGpuPreset }, null, 2)}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <Textarea
+                          value={gpuBatchAug}
+                          onChange={(e) => setGpuBatchAug(e.target.value)}
+                          placeholder='{"ops": [{"name": "RandomHorizontalFlip", "p": 0.5}, {"name": "RandomAffine", "degrees": 10}]}'
+                          className="font-mono text-sm"
+                          rows={4}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Custom GPU augmentation JSON. Available transforms: RandomHorizontalFlip, RandomVerticalFlip, RandomRotation, RandomAffine, RandomPerspective
+                        </p>
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Kornia-based geometric augmentations applied to training batches on GPU (after normalization).
                     </p>
                   </div>
-                  <div>
-                    <Label>CPU Color Jitter (Optional)</Label>
-                    <Textarea
-                      value={cpuColorJitter}
-                      onChange={(e) => setCpuColorJitter(e.target.value)}
-                      placeholder='{"preset": "cfp_color_v1"} or {"params": {"brightness": 0.15, "contrast": 0.15}, "p": 0.8}'
-                      className="font-mono text-sm"
-                      rows={3}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      CPU-side color jitter applied before normalization, training only.
+
+                  {/* CPU Color Jitter */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-medium">CPU Color Jitter (Optional)</Label>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-muted-foreground">Presets</span>
+                        <Switch
+                          checked={cpuPresetMode}
+                          onCheckedChange={setCpuPresetMode}
+                        />
+                      </div>
+                    </div>
+
+                    {cpuPresetMode ? (
+                      <div>
+                        <Select value={selectedCpuPreset} onValueChange={setSelectedCpuPreset}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select CPU color jitter preset" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {registryData?.success && Object.entries(registryData.data.cpu_color_presets || {}).map(([key, preset]: [string, any]) => (
+                              <SelectItem key={key} value={key}>
+                                <div>
+                                  <div className="font-medium">{preset.name}</div>
+                                  <div className="text-xs text-muted-foreground">{preset.description}</div>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {selectedCpuPreset && registryData?.success && (
+                          <div className="mt-2 p-2 bg-muted rounded text-xs font-mono">
+                            {JSON.stringify({ preset: selectedCpuPreset }, null, 2)}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <Textarea
+                          value={cpuColorJitter}
+                          onChange={(e) => setCpuColorJitter(e.target.value)}
+                          placeholder='{"params": {"brightness": 0.2, "contrast": 0.2, "saturation": 0.1, "hue": 0.05}, "p": 0.8}'
+                          className="font-mono text-sm"
+                          rows={3}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Custom color jitter JSON. Parameters: brightness, contrast, saturation, hue (all non-negative floats)
+                        </p>
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      CPU-side color augmentation applied before normalization, training only.
                     </p>
                   </div>
                 </CardContent>

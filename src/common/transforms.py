@@ -1,10 +1,14 @@
 """Image transforms that operate on tensor inputs (CxHxW, uint8),
-using HF processor metadata for size/normalization."""
+using HF processor metadata for size/normalization.
+
+Now uses the centralized registry system for color jitter validation.
+"""
 from typing import Tuple, Optional, Dict, Any
 import torch
 from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 from transformers import AutoImageProcessor
+from .registry import cpu_color_presets, validate_cpu_color_jitter_spec
 
 def _get_target_image_size(processor: AutoImageProcessor) -> int:
     size = getattr(processor, "size", None)
@@ -23,14 +27,33 @@ def _build_color_jitter_from_spec(spec: Optional[Dict[str, Any]]):
     Spec forms:
     - {"preset": "cfp_color_v1", "p": 0.8}
     - {"params": {brightness, contrast, saturation, hue}, "p": 0.8}
+
+    Now validates against the centralized registry.
     """
     if not spec:
         return None
 
+    # Validate spec against registry
+    is_valid, errors = validate_cpu_color_jitter_spec(spec)
+    if not is_valid:
+        print(f"[transforms] Invalid color jitter spec: {errors}")
+        return None
+
     p = float(spec.get("p", 0.8)) if isinstance(spec, dict) else 0.8
+
     if isinstance(spec, dict) and isinstance(spec.get("preset"), str):
-        # Mild, CFP-friendly jitter
-        params = dict(brightness=0.15, contrast=0.15, saturation=0.10, hue=0.02)
+        # Get parameters from preset
+        preset_name = spec["preset"]
+        preset_spec = cpu_color_presets.get(preset_name)
+        if not preset_spec:
+            return None
+
+        preset_config = preset_spec.config
+        params = dict(preset_config.get("params", {}))
+        # Use preset probability if not overridden
+        if "p" not in spec:
+            p = float(preset_config.get("p", 0.8))
+
     elif isinstance(spec, dict) and isinstance(spec.get("params"), dict):
         params = dict(spec["params"])  # type: ignore[index]
     else:
@@ -71,3 +94,8 @@ def build_transforms(model_flavour: str, train_color_jitter_spec: Optional[Dict[
         transforms.Normalize(mean=mean, std=std),
     ])
     return train_tfms, eval_tfms
+
+
+def get_available_color_presets() -> Dict[str, Any]:
+    """Get all available CPU color jitter presets for UI consumption."""
+    return cpu_color_presets.to_json()
