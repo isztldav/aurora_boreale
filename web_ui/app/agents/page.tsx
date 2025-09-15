@@ -49,8 +49,8 @@ function AgentCard({ agent }: { agent: Agent }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="mb-2 text-sm">GPUs: {gpus?.length ?? 0} • Allocated: {alloc}</div>
-        <div className="flex flex-wrap gap-2">
+        <div className="mb-3 text-sm">GPUs: {gpus?.length ?? 0} • Allocated: {alloc}</div>
+        <div className="space-y-2">
           {(gpus || []).map((g) => (
             <GpuBadge key={g.id} g={g} agentId={agent.id} />
           ))}

@@ -12,34 +12,59 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Button } from '@/components/ui/button'
 import { CommandPalette, useCommandPalette } from '@/components/command-palette'
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
-import { LayoutDashboard, Users, Settings, Plus } from 'lucide-react'
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from '@/components/ui/sheet'
+import { LayoutDashboard, Users, Settings, Plus, Menu } from 'lucide-react'
 
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex">
-        <AppSidebar />
-        <div className="flex flex-col min-h-screen flex-1">
+      <div className="flex">
+        {/* Desktop Sidebar - hidden on mobile */}
+        <div className="hidden lg:block">
+          <AppSidebar />
+        </div>
+
+        <div className="flex flex-col min-h-screen flex-1 min-w-0">
           <TopBar />
-          <main className="p-6 flex-1 overflow-auto">{children}</main>
+          <main className="p-4 sm:p-6 flex-1 overflow-auto">
+            <div className="mx-auto max-w-7xl">
+              {children}
+            </div>
+          </main>
         </div>
       </div>
     </SidebarProvider>
   )
 }
 
+
 function TopBar() {
   return (
-    <header className="border-b bg-background">
+    <header className="border-b bg-background sticky top-0 z-40">
       <div className="px-4 py-3 flex items-center gap-3">
-        <SidebarTrigger className="-ml-1" />
+        {/* Mobile Menu */}
+        <div className="lg:hidden">
+          <MobileNav />
+        </div>
+
+        {/* Desktop Sidebar Toggle - only visible on desktop when sidebar is present */}
+        <div className="hidden lg:block">
+          <SidebarTrigger className="-ml-1" />
+        </div>
+
         <span className="text-base font-medium">Dashboard</span>
         <div className="flex-1" />
+
         <div className="flex items-center gap-2">
           <div className="hidden md:block">
-            <Input placeholder="Search…" className="w-[260px]" />
+            <Input placeholder="Search…" className="w-[200px] lg:w-[260px]" />
           </div>
-          <OpenCommandPalette />
+          <div className="md:hidden">
+            <OpenCommandPalette />
+          </div>
+          <div className="hidden md:block">
+            <OpenCommandPalette />
+          </div>
           <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -197,11 +222,102 @@ function AppSidebar() {
   )
 }
 
+function MobileNav() {
+  const pathname = usePathname()
+
+  const NavLink = ({ href, label, icon, onSelect }: {
+    href: string;
+    label: string;
+    icon: React.ReactNode;
+    onSelect?: () => void;
+  }) => {
+    const isActive = pathname === href
+    return (
+      <Link
+        href={href}
+        onClick={onSelect}
+        className={cn(
+          'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted',
+          isActive ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'
+        )}
+      >
+        <div className="flex-shrink-0">{icon}</div>
+        <span>{label}</span>
+      </Link>
+    )
+  }
+
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <Menu className="h-4 w-4" />
+          <span className="sr-only">Toggle navigation menu</span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-[300px] sm:w-[400px]">
+        <SheetHeader>
+          <SheetTitle className="text-left">Navigation</SheetTitle>
+        </SheetHeader>
+        <div className="mt-6 space-y-6">
+          {/* Quick Create */}
+          <div>
+            <Button className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
+              Quick Create
+            </Button>
+          </div>
+
+          {/* Core Navigation */}
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-2">Core</h4>
+            <div className="space-y-1">
+              <NavLink
+                href="/"
+                label="Projects"
+                icon={<LayoutDashboard className="h-4 w-4" />}
+              />
+              <NavLink
+                href="/agents"
+                label="Agents"
+                icon={<Users className="h-4 w-4" />}
+              />
+            </div>
+          </div>
+
+          {/* Admin Navigation */}
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-2">Admin</h4>
+            <div className="space-y-1">
+              <NavLink
+                href="/settings"
+                label="Settings"
+                icon={<Settings className="h-4 w-4" />}
+              />
+            </div>
+          </div>
+
+          {/* Search on Mobile */}
+          <div className="md:hidden">
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">Search</h4>
+              <Input placeholder="Search…" className="w-full" />
+            </div>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
 function OpenCommandPalette() {
   const { open, setOpen } = useCommandPalette()
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)} title="Search (Ctrl+K)">Search</Button>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)} title="Search (Ctrl+K)">
+        <span className="hidden sm:inline">Search</span>
+        <span className="sm:hidden">⌘K</span>
+      </Button>
       <CommandPalette open={open} onOpenChange={setOpen} />
     </>
   )

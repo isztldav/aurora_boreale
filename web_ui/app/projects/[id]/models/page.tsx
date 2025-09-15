@@ -25,36 +25,60 @@ export default function ProjectModelsPage() {
     <Shell>
       <ProjectNav projectId={projectId} current="models" />
       <div className="rounded-lg border">
-        <div className="p-4 border-b flex items-center justify-between gap-2">
+        <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center gap-4">
           <h2 className="text-sm font-medium">Models</h2>
-          <div className="flex items-center gap-2">
-            <Input placeholder="Search models" value={q} onChange={(e) => setQ(e.target.value)} className="w-[240px]" />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:ml-auto">
+            <Input
+              placeholder="Search models"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="w-full sm:w-[240px]"
+            />
             <NewModelDialog projectId={projectId} onCreated={() => qc.invalidateQueries({ queryKey: ['models', { projectId }] })} />
           </div>
         </div>
         {isLoading ? <div className="p-4">Loading...</div> : error ? <div className="p-4 text-red-600">Failed to load models</div> : filtered.length === 0 ? (
           <div className="p-4 text-sm text-muted-foreground">No models found.</div>
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Label</TH>
-                <TH>Checkpoint</TH>
-                <TH className="text-right">Actions</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {filtered.map((m) => (
-                <TR key={m.id}>
-                  <TD className="font-medium">{m.label}</TD>
-                  <TD className="truncate max-w-[360px]" title={m.hf_checkpoint_id}>{m.hf_checkpoint_id}</TD>
-                  <TD className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => apiEx.models.delete(m.id).then(() => qc.invalidateQueries({ queryKey: ['models', { projectId }] }))}>Delete</Button>
-                  </TD>
+          <div className="overflow-x-auto">
+            <Table>
+              <THead>
+                <TR>
+                  <TH className="min-w-[120px]">Label</TH>
+                  <TH className="min-w-[200px] hidden sm:table-cell">Checkpoint</TH>
+                  <TH className="min-w-[100px] text-right">Actions</TH>
                 </TR>
-              ))}
-            </TBody>
-          </Table>
+              </THead>
+              <TBody>
+                {filtered.map((m) => (
+                  <TR key={m.id}>
+                    <TD className="font-medium">
+                      <div className="truncate max-w-[120px] sm:max-w-none">{m.label}</div>
+                      {/* Show checkpoint on mobile below label */}
+                      <div className="sm:hidden text-xs text-muted-foreground truncate max-w-[120px]" title={m.hf_checkpoint_id}>
+                        {m.hf_checkpoint_id}
+                      </div>
+                    </TD>
+                    <TD className="hidden sm:table-cell">
+                      <div className="truncate max-w-[200px] lg:max-w-[300px]" title={m.hf_checkpoint_id}>
+                        {m.hf_checkpoint_id}
+                      </div>
+                    </TD>
+                    <TD className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => apiEx.models.delete(m.id).then(() => qc.invalidateQueries({ queryKey: ['models', { projectId }] }))}
+                      >
+                        <span className="hidden sm:inline">Delete</span>
+                        <span className="sm:hidden">Del</span>
+                      </Button>
+                    </TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          </div>
         )}
       </div>
     </Shell>

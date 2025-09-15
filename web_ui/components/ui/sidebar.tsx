@@ -27,7 +27,7 @@ export function Sidebar({ className, children }: React.HTMLAttributes<HTMLElemen
   return (
     <aside
       className={cn(
-        'border-r bg-card transition-all duration-200 ease-linear overflow-hidden',
+        'border-r bg-card transition-all duration-200 ease-linear overflow-hidden min-h-full flex flex-col',
         collapsed ? 'w-14' : 'w-60',
         className,
       )}
@@ -52,7 +52,7 @@ export function SidebarHeader({ className, ...props }: React.HTMLAttributes<HTML
 }
 
 export function SidebarContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('px-2', className)} {...props} />
+  return <div className={cn('px-2 flex-1', className)} {...props} />
 }
 
 export function SidebarFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

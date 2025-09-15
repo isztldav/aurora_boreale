@@ -89,48 +89,57 @@ export default function ProjectPage() {
       </section>
 
       <section className="rounded-lg border">
-        <div className="p-4 border-b flex items-center justify-between gap-2">
-          <h2 className="text-sm font-medium">Runs</h2>
-          <div className="flex items-center gap-2">
-            <Tabs defaultValue="all">
-              <TabsList>
-                <TabsTrigger value="all" onClick={() => setStates({ running: true, queued: true, failed: true, succeeded: true, canceled: true })}>All</TabsTrigger>
-                <TabsTrigger value="active" onClick={() => setStates({ running: true, queued: true, failed: false, succeeded: false, canceled: false })}>Active</TabsTrigger>
-                <TabsTrigger value="done" onClick={() => setStates({ running: false, queued: false, failed: true, succeeded: true, canceled: true })}>Done</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <Input placeholder="Search runs" value={q} onChange={(e) => setQ(e.target.value)} className="w-[220px]" />
-            <Popover>
-              <PopoverTrigger asChild><Button variant="outline" size="sm">Filters</Button></PopoverTrigger>
-              <PopoverContent align="end">
-                <div className="space-y-2">
-                  <div className="text-xs font-medium">State</div>
-                  {(['running','queued','succeeded','failed','canceled'] as const).map((s) => (
-                    <label key={s} className="flex items-center gap-2 text-sm">
-                      <Checkbox checked={!!states[s]} onCheckedChange={(v) => setStates((prev) => ({ ...prev, [s]: Boolean(v) }))} />
-                      <span className="capitalize">{s}</span>
-                    </label>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button variant="outline" size="sm">Columns</Button></DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {([
-                  ['best', 'Best'],
-                  ['epoch', 'Epoch'],
-                  ['started', 'Started'],
-                  ['finished', 'Finished'],
-                ] as const).map(([key, label]) => (
-                  <DropdownMenuItem key={key} className="gap-2" onSelect={(e) => e.preventDefault()}>
-                    <Checkbox checked={!!cols[key]} onCheckedChange={(v) => setCols((c) => ({ ...c, [key]: Boolean(v) }))} />
-                    <span>{label}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+        <div className="p-4 border-b space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h2 className="text-sm font-medium">Runs</h2>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <Input
+                placeholder="Search runs"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                className="w-full sm:w-[220px]"
+              />
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild><Button variant="outline" size="sm">Filters</Button></PopoverTrigger>
+                  <PopoverContent align="end">
+                    <div className="space-y-2">
+                      <div className="text-xs font-medium">State</div>
+                      {(['running','queued','succeeded','failed','canceled'] as const).map((s) => (
+                        <label key={s} className="flex items-center gap-2 text-sm">
+                          <Checkbox checked={!!states[s]} onCheckedChange={(v) => setStates((prev) => ({ ...prev, [s]: Boolean(v) }))} />
+                          <span className="capitalize">{s}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="hidden md:inline-flex">Columns</Button></DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {([
+                      ['best', 'Best'],
+                      ['epoch', 'Epoch'],
+                      ['started', 'Started'],
+                      ['finished', 'Finished'],
+                    ] as const).map(([key, label]) => (
+                      <DropdownMenuItem key={key} className="gap-2" onSelect={(e) => e.preventDefault()}>
+                        <Checkbox checked={!!cols[key]} onCheckedChange={(v) => setCols((c) => ({ ...c, [key]: Boolean(v) }))} />
+                        <span>{label}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
           </div>
+          <Tabs defaultValue="all" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="all" onClick={() => setStates({ running: true, queued: true, failed: true, succeeded: true, canceled: true })}>All</TabsTrigger>
+              <TabsTrigger value="active" onClick={() => setStates({ running: true, queued: true, failed: false, succeeded: false, canceled: false })}>Active</TabsTrigger>
+              <TabsTrigger value="done" onClick={() => setStates({ running: false, queued: false, failed: true, succeeded: true, canceled: true })}>Done</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
         {isLoading ? (
           <div className="p-4">Loading runs...</div>
@@ -139,55 +148,86 @@ export default function ProjectPage() {
         ) : filtered.length === 0 ? (
           <div className="p-4 text-sm text-muted-foreground">No runs matching filters.</div>
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Name</TH>
-                <TH>State</TH>
-                {cols.best && <TH>Best</TH>}
-                {cols.epoch && <TH>Epoch</TH>}
-                {cols.started && <TH>Started</TH>}
-                {cols.finished && <TH>Finished</TH>}
-                <TH className="text-right">Actions</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {filtered.map((r) => (
-                <TR key={r.id}>
-                  <TD className="font-medium">
-                    <button
-                      className="text-left text-primary hover:underline"
-                      onClick={() => setCfgRun({ id: r.id, name: r.name, config_id: r.config_id })}
-                    >
-                      {r.name}
-                    </button>
-                  </TD>
-                  <TD><RunStateBadge state={r.state} /></TD>
-                  {cols.best && <TD>{r.best_value ?? '-'}</TD>}
-                  {cols.epoch && <TD>{r.epoch ?? '-'}</TD>}
-                  {cols.started && <TD>{formatDateTime(r.started_at)}</TD>}
-                  {cols.finished && <TD>{formatDateTime(r.finished_at)}</TD>}
-                  <TD className="text-right space-x-2">
-                    <Button size="sm" onClick={() => setOpenRunId(r.id)}>Open</Button>
-                    <Button variant="outline" size="sm" onClick={() => setTbRunId(r.id)}>TensorBoard</Button>
-                    {r.state === 'queued' && (
-                      <>
-                        <Button size="sm" onClick={() => api.runs.start(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))}>Start</Button>
-                        <Button variant="outline" size="sm" onClick={() => api.runs.cancel(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))}>Cancel</Button>
-                      </>
-                    )}
-                    {r.state === 'running' && (
-                      <>
-                        <Button variant="secondary" size="sm" onClick={() => api.runs.finish(r.id, true).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))}>Finish</Button>
-                        <Button variant="outline" size="sm" onClick={() => api.runs.halt(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))}>Halt</Button>
-                        <Button variant="destructive" size="sm" onClick={() => api.runs.cancel(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))}>Cancel</Button>
-                      </>
-                    )}
-                  </TD>
+          <div className="overflow-x-auto">
+            <Table>
+              <THead>
+                <TR>
+                  <TH className="min-w-[150px]">Name</TH>
+                  <TH className="min-w-[80px]">State</TH>
+                  {cols.best && <TH className="min-w-[60px] hidden sm:table-cell">Best</TH>}
+                  {cols.epoch && <TH className="min-w-[70px] hidden sm:table-cell">Epoch</TH>}
+                  {cols.started && <TH className="min-w-[120px] hidden md:table-cell">Started</TH>}
+                  {cols.finished && <TH className="min-w-[120px] hidden md:table-cell">Finished</TH>}
+                  <TH className="min-w-[200px] text-right">Actions</TH>
                 </TR>
-              ))}
-            </TBody>
-          </Table>
+              </THead>
+              <TBody>
+                {filtered.map((r) => (
+                  <TR key={r.id}>
+                    <TD className="font-medium">
+                      <button
+                        className="text-left text-primary hover:underline truncate max-w-[150px] block"
+                        onClick={() => setCfgRun({ id: r.id, name: r.name, config_id: r.config_id })}
+                        title={r.name}
+                      >
+                        {r.name}
+                      </button>
+                      {/* Show mobile-only metadata below name */}
+                      <div className="sm:hidden text-xs text-muted-foreground mt-1 space-y-1">
+                        {cols.best && r.best_value && <div>Best: {r.best_value}</div>}
+                        {cols.epoch && r.epoch && <div>Epoch: {r.epoch}</div>}
+                      </div>
+                    </TD>
+                    <TD><RunStateBadge state={r.state} /></TD>
+                    {cols.best && <TD className="hidden sm:table-cell">{r.best_value ?? '-'}</TD>}
+                    {cols.epoch && <TD className="hidden sm:table-cell">{r.epoch ?? '-'}</TD>}
+                    {cols.started && <TD className="hidden md:table-cell">{formatDateTime(r.started_at)}</TD>}
+                    {cols.finished && <TD className="hidden md:table-cell">{formatDateTime(r.finished_at)}</TD>}
+                    <TD className="text-right">
+                      <div className="flex items-center gap-1 justify-end flex-wrap">
+                        <Button size="sm" onClick={() => setOpenRunId(r.id)} className="shrink-0">
+                          <span className="hidden sm:inline">Open</span>
+                          <span className="sm:hidden">📊</span>
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setTbRunId(r.id)} className="shrink-0">
+                          <span className="hidden sm:inline">TensorBoard</span>
+                          <span className="sm:hidden">📈</span>
+                        </Button>
+                        {r.state === 'queued' && (
+                          <>
+                            <Button size="sm" onClick={() => api.runs.start(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))} className="shrink-0">
+                              <span className="hidden sm:inline">Start</span>
+                              <span className="sm:hidden">▶️</span>
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => api.runs.cancel(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))} className="shrink-0">
+                              <span className="hidden sm:inline">Cancel</span>
+                              <span className="sm:hidden">❌</span>
+                            </Button>
+                          </>
+                        )}
+                        {r.state === 'running' && (
+                          <>
+                            <Button variant="secondary" size="sm" onClick={() => api.runs.finish(r.id, true).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))} className="shrink-0">
+                              <span className="hidden sm:inline">Finish</span>
+                              <span className="sm:hidden">✅</span>
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => api.runs.halt(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))} className="shrink-0">
+                              <span className="hidden sm:inline">Halt</span>
+                              <span className="sm:hidden">⏸️</span>
+                            </Button>
+                            <Button variant="destructive" size="sm" onClick={() => api.runs.cancel(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))} className="shrink-0">
+                              <span className="hidden sm:inline">Cancel</span>
+                              <span className="sm:hidden">❌</span>
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          </div>
         )}
       </section>
       {/* Run Config Viewer */}
