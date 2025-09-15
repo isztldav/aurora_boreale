@@ -15,6 +15,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 
 export default function ProjectConfigsPage() {
@@ -29,269 +32,601 @@ export default function ProjectConfigsPage() {
   return (
     <Shell>
       <ProjectNav projectId={projectId} current="configs" />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 rounded-lg border">
-          <div className="p-4 border-b"><h2 className="text-sm font-medium">Configs</h2></div>
+      <div className="space-y-6">
+        {/* Existing Configs */}
+        <div className="rounded-lg border">
+          <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h2 className="text-sm font-medium">Training Configurations</h2>
+            <Badge variant="secondary">{data?.length || 0} configs</Badge>
+          </div>
           {isLoading ? <div className="p-4">Loading...</div> : error ? <div className="p-4 text-red-600">Failed to load configs</div> : (
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Name</TH>
-                  <TH>Version</TH>
-                  <TH>Status</TH>
-                  <TH className="text-right">Actions</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {data?.map((c) => (
-                  <TR key={c.id}>
-                    <TD className="font-medium">{c.name}</TD>
-                    <TD>{c.version}</TD>
-                    <TD>{c.status}</TD>
-                    <TD className="text-right">
-                      <QueueRunDialog projectId={projectId} configId={c.id} />
-                    </TD>
+            <div className="overflow-x-auto">
+              <Table>
+                <THead>
+                  <TR>
+                    <TH className="min-w-[120px]">Name</TH>
+                    <TH className="min-w-[80px]">Version</TH>
+                    <TH className="min-w-[80px]">Status</TH>
+                    <TH className="min-w-[120px] text-right">Actions</TH>
                   </TR>
-                ))}
-              </TBody>
-            </Table>
+                </THead>
+                <TBody>
+                  {data?.map((c) => (
+                    <TR key={c.id}>
+                      <TD className="font-medium">{c.name}</TD>
+                      <TD>{c.version}</TD>
+                      <TD>{c.status}</TD>
+                      <TD className="text-right">
+                        <QueueRunDialog projectId={projectId} configId={c.id} />
+                      </TD>
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            </div>
           )}
         </div>
-        <div className="rounded-lg border">
-          <div className="p-4 border-b"><h2 className="text-sm font-medium">New Config</h2></div>
-          <ConfigForm projectId={projectId} groups={groups || []} models={models || []} datasets={datasets || []} onCreated={() => qc.invalidateQueries({ queryKey: ['configs', { projectId }] })} />
-        </div>
+
+        {/* New Config Form */}
+        <ConfigForm projectId={projectId} groups={groups || []} models={models || []} datasets={datasets || []} onCreated={() => qc.invalidateQueries({ queryKey: ['configs', { projectId }] })} />
       </div>
     </Shell>
   )
 }
 
 function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projectId: string; groups: { id: string; name: string }[]; models: { label: string; hf_checkpoint_id: string }[]; datasets: { id: string; name: string; root_path: string }[]; onCreated: () => void }) {
+  // Basic Configuration
   const [name, setName] = useState('baseline')
   const [groupId, setGroupId] = useState<string | undefined>(undefined)
+
+  // Dataset Configuration
   const [root, setRoot] = useState('')
   const [datasetId, setDatasetId] = useState<string | 'custom' | undefined>(undefined)
+  const [maxPerClass, setMaxPerClass] = useState(10000)
+
+  // Model Configuration
   const [modelFlavour, setModelFlavour] = useState('google/vit-base-patch16-224')
   const [loss, setLoss] = useState('cross_entropy')
+  const [loadPretrained, setLoadPretrained] = useState(true)
+  const [freezeBackbone, setFreezeBackbone] = useState(false)
+
+  // Training Configuration
   const [batchSize, setBatchSize] = useState(64)
   const [epochs, setEpochs] = useState(10)
+  const [seed, setSeed] = useState(42)
+
+  // Optimization Configuration
   const [optimizer, setOptimizer] = useState('adamw')
   const [lr, setLr] = useState(5e-4)
   const [weightDecay, setWeightDecay] = useState(0.05)
   const [warmup, setWarmup] = useState(0.05)
-  const [prefetch, setPrefetch] = useState(4)
-  const [workers, setWorkers] = useState(4)
-  const [persistentWorkers, setPersistentWorkers] = useState(false)
   const [gradAccum, setGradAccum] = useState(1)
-  const [seed, setSeed] = useState(42)
-  const [loadPretrained, setLoadPretrained] = useState(true)
-  const [tbRoot, setTbRoot] = useState('runs')
-  const [ckptDir, setCkptDir] = useState('checkpoints')
+  const [maxGradNorm, setMaxGradNorm] = useState(1.0)
+
+  // Data Loading Configuration
+  const [workers, setWorkers] = useState(4)
+  const [prefetch, setPrefetch] = useState(4)
+  const [persistentWorkers, setPersistentWorkers] = useState(false)
+
+  // Augmentation Configuration
+  const [gpuBatchAug, setGpuBatchAug] = useState('')
+  const [cpuColorJitter, setCpuColorJitter] = useState('')
+
+  // Monitoring & Checkpoints
   const [monitorMetric, setMonitorMetric] = useState('val_acc@1')
   const [monitorMode, setMonitorMode] = useState<'max'|'min'>('max')
+  const [tbRoot, setTbRoot] = useState('runs')
+  const [ckptDir, setCkptDir] = useState('checkpoints')
   const [modelSuffix, setModelSuffix] = useState('')
-  const [maxPerClass, setMaxPerClass] = useState(10000)
+  const [savePerEpoch, setSavePerEpoch] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      // Parse augmentation JSON if provided
+      let gpuBatchAugObj = null
+      let cpuColorJitterObj = null
+
+      if (gpuBatchAug.trim()) {
+        try {
+          gpuBatchAugObj = JSON.parse(gpuBatchAug)
+        } catch (err) {
+          toast.error('Invalid GPU Batch Augmentation JSON')
+          return
+        }
+      }
+
+      if (cpuColorJitter.trim()) {
+        try {
+          cpuColorJitterObj = JSON.parse(cpuColorJitter)
+        } catch (err) {
+          toast.error('Invalid CPU Color Jitter JSON')
+          return
+        }
+      }
+
       const cfg = {
+        // Dataset
         root,
+        max_datapoints_per_class: Number(maxPerClass),
+
+        // Model
         model_flavour: modelFlavour,
         loss_name: loss,
+        load_pretrained: Boolean(loadPretrained),
+        freeze_backbone: Boolean(freezeBackbone),
+
+        // Training
         batch_size: Number(batchSize),
-        num_workers: Number(workers),
-        prefetch_factor: Number(prefetch),
-        persistent_workers: Boolean(persistentWorkers),
         epochs: Number(epochs),
+        seed: Number(seed),
+        autocast_dtype: 'torch.bfloat16',
+
+        // Optimization
         optimizer,
         lr: Number(lr),
         weight_decay: Number(weightDecay),
-        max_grad_norm: 1.0,
+        max_grad_norm: Number(maxGradNorm),
         warmup_ratio: Number(warmup),
         grad_accum_steps: Number(gradAccum),
-        seed: Number(seed),
-        autocast_dtype: 'torch.bfloat16',
-        load_pretrained: Boolean(loadPretrained),
-        run_name: null,
-        tb_root: tbRoot,
-        eval_topk: [3, 5],
-        model_suffix: modelSuffix,
-        freeze_backbone: false,
-        ckpt_dir: ckptDir,
+
+        // Data Loading
+        num_workers: Number(workers),
+        prefetch_factor: Number(prefetch),
+        persistent_workers: Boolean(persistentWorkers),
+
+        // Augmentations
+        gpu_batch_aug: gpuBatchAugObj,
+        cpu_color_jitter: cpuColorJitterObj,
+
+        // Monitoring & Checkpoints
         monitor_metric: monitorMetric,
         monitor_mode: monitorMode,
-        save_per_epoch_checkpoint: false,
-        max_datapoints_per_class: Number(maxPerClass),
+        tb_root: tbRoot,
+        ckpt_dir: ckptDir,
+        model_suffix: modelSuffix,
+        save_per_epoch_checkpoint: Boolean(savePerEpoch),
+
+        // Fixed values
+        run_name: null,
+        eval_topk: [3, 5],
       }
+
       await apiEx.configs.create({ project_id: projectId, name, group_id: groupId, config_json: cfg })
       onCreated()
-      toast.success('Config created')
+      toast.success('Config created successfully')
     } catch (e: any) {
       toast.error(e?.message || 'Failed to create config')
     }
   }
 
   return (
-    <form className="p-4 space-y-4" onSubmit={submit}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <Label htmlFor="name">Name</Label>
-          <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
-        <div>
-          <Label>Group</Label>
-          <Select value={groupId ?? 'none'} onValueChange={(v) => setGroupId(v === 'none' ? undefined : v)}>
-            <SelectTrigger><SelectValue placeholder="Select group (optional)" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              {groups.map((g) => (<SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="sm:col-span-2">
-          <Label>Dataset</Label>
-          <Select
-            value={datasetId ?? (datasets[0]?.id ?? 'custom')}
-            onValueChange={(v) => {
-              if (v === 'custom') {
-                setDatasetId('custom')
-                setRoot('')
-              } else {
-                setDatasetId(v)
-                const d = datasets.find((x) => x.id === v)
-                setRoot(d?.root_path || '')
-              }
-            }}
-          >
-            <SelectTrigger><SelectValue placeholder="Select dataset" /></SelectTrigger>
-            <SelectContent>
-              {datasets.map((d) => (
-                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-              ))}
-              <SelectItem value="custom">Custom path…</SelectItem>
-            </SelectContent>
-          </Select>
-          {datasetId === 'custom' && (
-            <div className="mt-2">
-              <Label htmlFor="root">Dataset Root</Label>
-              <Input id="root" value={root} onChange={(e) => setRoot(e.target.value)} placeholder="/app/datasets/your-dataset" />
+    <Card>
+      <CardHeader>
+        <CardTitle>New Training Configuration</CardTitle>
+        <CardDescription>
+          Create a new training configuration with organized settings for datasets, models, training parameters, and augmentations.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={submit} className="space-y-6">
+          {/* Basic Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="name">Configuration Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., baseline, augmented-v1"
+                required
+              />
             </div>
-          )}
-          {datasetId && datasetId !== 'custom' && root && (
-            <div className="mt-1 text-xs text-muted-foreground">Path: {root}</div>
-          )}
-        </div>
-        <div>
-          <Label>Model</Label>
-          <Select value={modelFlavour} onValueChange={setModelFlavour}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {models.map((m) => (<SelectItem key={m.label} value={m.hf_checkpoint_id}>{m.label}</SelectItem>))}
-              <SelectItem value="google/vit-base-patch16-224">google/vit-base-patch16-224</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>Loss</Label>
-          <Select value={loss} onValueChange={setLoss}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="cross_entropy">cross_entropy</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>Batch Size</Label>
-          <Input type="number" value={batchSize} onChange={(e) => setBatchSize(Number(e.target.value))} />
-        </div>
-        <div>
-          <Label>Epochs</Label>
-          <Input type="number" value={epochs} onChange={(e) => setEpochs(Number(e.target.value))} />
-        </div>
-        <div>
-          <Label>Optimizer</Label>
-          <Select value={optimizer} onValueChange={setOptimizer}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="adam">adam</SelectItem>
-              <SelectItem value="adamw">adamw</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>LR</Label>
-          <Input type="number" step="any" value={lr} onChange={(e) => setLr(Number(e.target.value))} />
-        </div>
-        <div>
-          <Label>Weight Decay</Label>
-          <Input type="number" step="any" value={weightDecay} onChange={(e) => setWeightDecay(Number(e.target.value))} />
-        </div>
-        <div>
-          <Label>Warmup Ratio</Label>
-          <Input type="number" step="any" value={warmup} onChange={(e) => setWarmup(Number(e.target.value))} />
-        </div>
-        <div>
-          <Label>Num Workers</Label>
-          <Input type="number" value={workers} onChange={(e) => setWorkers(Number(e.target.value))} />
-        </div>
-        <div>
-          <Label>Prefetch Factor</Label>
-          <Input type="number" value={prefetch} onChange={(e) => setPrefetch(Number(e.target.value))} />
-        </div>
-        <div>
-          <Label>Grad Accum Steps</Label>
-          <Input type="number" value={gradAccum} onChange={(e) => setGradAccum(Number(e.target.value))} />
-        </div>
-        <div>
-          <Label>Seed</Label>
-          <Input type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value))} />
-        </div>
-        <div className="sm:col-span-2">
-          <Label>Load Pretrained</Label>
-          <div><Switch checked={loadPretrained} onCheckedChange={setLoadPretrained} /></div>
-        </div>
-        <div>
-          <Label>TB Root</Label>
-          <Input value={tbRoot} onChange={(e) => setTbRoot(e.target.value)} />
-        </div>
-        <div>
-          <Label>CKPT Dir</Label>
-          <Input value={ckptDir} onChange={(e) => setCkptDir(e.target.value)} />
-        </div>
-        <div>
-          <Label>Monitor Metric</Label>
-          <Select value={monitorMetric} onValueChange={setMonitorMetric}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="val_acc@1">val_acc@1</SelectItem>
-              <SelectItem value="val_loss">val_loss</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>Monitor Mode</Label>
-          <Select value={monitorMode} onValueChange={(v) => setMonitorMode(v as 'max'|'min')}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="max">max</SelectItem>
-              <SelectItem value="min">min</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>Model Suffix</Label>
-          <Input value={modelSuffix} onChange={(e) => setModelSuffix(e.target.value)} />
-        </div>
-        <div>
-          <Label>Max/cls</Label>
-          <Input type="number" value={maxPerClass} onChange={(e) => setMaxPerClass(Number(e.target.value))} />
-        </div>
-      </div>
-      <div className="flex justify-end">
-        <Button type="submit">Create</Button>
-      </div>
-    </form>
+            <div>
+              <Label>Group (Optional)</Label>
+              <Select value={groupId ?? 'none'} onValueChange={(v) => setGroupId(v === 'none' ? undefined : v)}>
+                <SelectTrigger><SelectValue placeholder="Select group" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {groups.map((g) => (<SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <Tabs defaultValue="dataset" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-6">
+              <TabsTrigger value="dataset">Dataset</TabsTrigger>
+              <TabsTrigger value="model">Model</TabsTrigger>
+              <TabsTrigger value="training">Training</TabsTrigger>
+              <TabsTrigger value="optimization">Optimization</TabsTrigger>
+              <TabsTrigger value="augmentation">Augmentation</TabsTrigger>
+              <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="dataset" className="space-y-4 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Dataset Configuration</CardTitle>
+                  <CardDescription>Configure the dataset and data loading parameters</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label>Dataset</Label>
+                    <Select
+                      value={datasetId ?? (datasets[0]?.id ?? 'custom')}
+                      onValueChange={(v) => {
+                        if (v === 'custom') {
+                          setDatasetId('custom')
+                          setRoot('')
+                        } else {
+                          setDatasetId(v)
+                          const d = datasets.find((x) => x.id === v)
+                          setRoot(d?.root_path || '')
+                        }
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Select dataset" /></SelectTrigger>
+                      <SelectContent>
+                        {datasets.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                        ))}
+                        <SelectItem value="custom">Custom path…</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {datasetId === 'custom' && (
+                      <div className="mt-2">
+                        <Label htmlFor="root">Dataset Root Path</Label>
+                        <Input
+                          id="root"
+                          value={root}
+                          onChange={(e) => setRoot(e.target.value)}
+                          placeholder="/app/datasets/your-dataset"
+                          required
+                        />
+                      </div>
+                    )}
+                    {datasetId && datasetId !== 'custom' && root && (
+                      <div className="mt-1 text-xs text-muted-foreground">Path: {root}</div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label>Max Samples per Class</Label>
+                      <Input
+                        type="number"
+                        value={maxPerClass}
+                        onChange={(e) => setMaxPerClass(Number(e.target.value))}
+                        min="1"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Limit data for faster experimentation</p>
+                    </div>
+                    <div>
+                      <Label>Num Workers</Label>
+                      <Input
+                        type="number"
+                        value={workers}
+                        onChange={(e) => setWorkers(Number(e.target.value))}
+                        min="0"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Data loading processes</p>
+                    </div>
+                    <div>
+                      <Label>Prefetch Factor</Label>
+                      <Input
+                        type="number"
+                        value={prefetch}
+                        onChange={(e) => setPrefetch(Number(e.target.value))}
+                        min="1"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Batches to prefetch per worker</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="persistent-workers"
+                      checked={persistentWorkers}
+                      onCheckedChange={setPersistentWorkers}
+                    />
+                    <Label htmlFor="persistent-workers">Persistent Workers</Label>
+                    <p className="text-xs text-muted-foreground">Keep workers alive between epochs</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="model" className="space-y-4 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Model Configuration</CardTitle>
+                  <CardDescription>Configure the model architecture and initialization</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Model Architecture</Label>
+                      <Select value={modelFlavour} onValueChange={setModelFlavour}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {models.map((m) => (
+                            <SelectItem key={m.label} value={m.hf_checkpoint_id}>{m.label}</SelectItem>
+                          ))}
+                          <SelectItem value="google/vit-base-patch16-224">google/vit-base-patch16-224</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Loss Function</Label>
+                      <Select value={loss} onValueChange={setLoss}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cross_entropy">Cross Entropy</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="load-pretrained"
+                        checked={loadPretrained}
+                        onCheckedChange={setLoadPretrained}
+                      />
+                      <Label htmlFor="load-pretrained">Load Pretrained Weights</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="freeze-backbone"
+                        checked={freezeBackbone}
+                        onCheckedChange={setFreezeBackbone}
+                      />
+                      <Label htmlFor="freeze-backbone">Freeze Backbone</Label>
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Model Suffix (Optional)</Label>
+                    <Input
+                      value={modelSuffix}
+                      onChange={(e) => setModelSuffix(e.target.value)}
+                      placeholder="e.g., -finetune"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Added to saved model names</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="training" className="space-y-4 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Training Configuration</CardTitle>
+                  <CardDescription>Configure basic training parameters</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label>Batch Size</Label>
+                      <Input
+                        type="number"
+                        value={batchSize}
+                        onChange={(e) => setBatchSize(Number(e.target.value))}
+                        min="1"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Epochs</Label>
+                      <Input
+                        type="number"
+                        value={epochs}
+                        onChange={(e) => setEpochs(Number(e.target.value))}
+                        min="1"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Random Seed</Label>
+                      <Input
+                        type="number"
+                        value={seed}
+                        onChange={(e) => setSeed(Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="optimization" className="space-y-4 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Optimization Configuration</CardTitle>
+                  <CardDescription>Configure optimizer and training dynamics</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Optimizer</Label>
+                      <Select value={optimizer} onValueChange={setOptimizer}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="adam">Adam</SelectItem>
+                          <SelectItem value="adamw">AdamW</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Learning Rate</Label>
+                      <Input
+                        type="number"
+                        step="any"
+                        value={lr}
+                        onChange={(e) => setLr(Number(e.target.value))}
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                      <Label>Weight Decay</Label>
+                      <Input
+                        type="number"
+                        step="any"
+                        value={weightDecay}
+                        onChange={(e) => setWeightDecay(Number(e.target.value))}
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <Label>Warmup Ratio</Label>
+                      <Input
+                        type="number"
+                        step="any"
+                        value={warmup}
+                        onChange={(e) => setWarmup(Number(e.target.value))}
+                        min="0"
+                        max="1"
+                      />
+                    </div>
+                    <div>
+                      <Label>Grad Accum Steps</Label>
+                      <Input
+                        type="number"
+                        value={gradAccum}
+                        onChange={(e) => setGradAccum(Number(e.target.value))}
+                        min="1"
+                      />
+                    </div>
+                    <div>
+                      <Label>Max Grad Norm</Label>
+                      <Input
+                        type="number"
+                        step="any"
+                        value={maxGradNorm}
+                        onChange={(e) => setMaxGradNorm(Number(e.target.value))}
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="augmentation" className="space-y-4 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Data Augmentation</CardTitle>
+                  <CardDescription>Configure GPU batch augmentations and CPU color jitter (JSON format)</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label>GPU Batch Augmentation (Optional)</Label>
+                    <Textarea
+                      value={gpuBatchAug}
+                      onChange={(e) => setGpuBatchAug(e.target.value)}
+                      placeholder='{"preset": "cfp_dr_v1"} or {"ops": [{"name": "RandomHorizontalFlip", "p": 0.5}]}'
+                      className="font-mono text-sm"
+                      rows={3}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Kornia-based GPU augmentations applied to training batches. Use presets or custom ops.
+                    </p>
+                  </div>
+                  <div>
+                    <Label>CPU Color Jitter (Optional)</Label>
+                    <Textarea
+                      value={cpuColorJitter}
+                      onChange={(e) => setCpuColorJitter(e.target.value)}
+                      placeholder='{"preset": "cfp_color_v1"} or {"params": {"brightness": 0.15, "contrast": 0.15}, "p": 0.8}'
+                      className="font-mono text-sm"
+                      rows={3}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      CPU-side color jitter applied before normalization, training only.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="monitoring" className="space-y-4 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Monitoring & Checkpoints</CardTitle>
+                  <CardDescription>Configure logging, monitoring, and checkpoint saving</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Monitor Metric</Label>
+                      <Select value={monitorMetric} onValueChange={setMonitorMetric}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="val_acc@1">Validation Accuracy@1</SelectItem>
+                          <SelectItem value="val_loss">Validation Loss</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Monitor Mode</Label>
+                      <Select value={monitorMode} onValueChange={(v) => setMonitorMode(v as 'max'|'min')}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="max">Maximize (for accuracy)</SelectItem>
+                          <SelectItem value="min">Minimize (for loss)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>TensorBoard Root</Label>
+                      <Input
+                        value={tbRoot}
+                        onChange={(e) => setTbRoot(e.target.value)}
+                        placeholder="runs"
+                      />
+                    </div>
+                    <div>
+                      <Label>Checkpoint Directory</Label>
+                      <Input
+                        value={ckptDir}
+                        onChange={(e) => setCkptDir(e.target.value)}
+                        placeholder="checkpoints"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="save-per-epoch"
+                      checked={savePerEpoch}
+                      onCheckedChange={setSavePerEpoch}
+                    />
+                    <Label htmlFor="save-per-epoch">Save Per Epoch Checkpoint</Label>
+                    <p className="text-xs text-muted-foreground">Save model after every epoch (uses more disk space)</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+
+          <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={() => {
+              // Reset form to defaults
+              setName('baseline')
+              setGroupId(undefined)
+              setRoot('')
+              setDatasetId(undefined)
+            }}>
+              Reset to Defaults
+            </Button>
+            <Button type="submit">
+              Create Configuration
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   )
 }
 

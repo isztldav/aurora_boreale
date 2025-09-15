@@ -43,7 +43,7 @@ class GroupOut(BaseModel):
 
 
 class TrainConfigIn(BaseModel):
-    # Flat TrainConfig fields (mirror utils.config.TrainConfig)
+    # Flat TrainConfig fields (mirror src/common/config.TrainConfig)
     root: str
     model_flavour: str
     loss_name: str
@@ -71,6 +71,10 @@ class TrainConfigIn(BaseModel):
     monitor_mode: str = "max"
     save_per_epoch_checkpoint: bool = False
     max_datapoints_per_class: int | list[int] = 10_000
+
+    # New augmentation options
+    gpu_batch_aug: Optional[dict] = None
+    cpu_color_jitter: Optional[dict] = None
 
 
 class TrainConfigCreate(BaseModel):
