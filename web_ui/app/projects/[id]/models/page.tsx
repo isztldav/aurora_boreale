@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiEx } from '@/lib/api'
+import { apiEx, Model } from '@/lib/api'
 import { Shell } from '@/components/shell/shell'
 import { ProjectNav } from '@/components/projects/project-nav'
 import { Table, THead, TBody, TR, TH, TD } from '@/components/ui/table'
@@ -35,7 +35,7 @@ export default function ProjectModelsPage() {
               onChange={(e) => setQ(e.target.value)}
               className="w-full sm:w-[240px]"
             />
-            <NewModelDialog projectId={projectId} onCreated={() => qc.invalidateQueries({ queryKey: ['models', { projectId }] })} />
+            <NewModelDialog projectId={projectId} existingModels={data} onCreated={() => qc.invalidateQueries({ queryKey: ['models', { projectId }] })} />
           </div>
         </div>
         {isLoading ? <div className="p-4">Loading...</div> : error ? <div className="p-4 text-red-600">Failed to load models</div> : filtered.length === 0 ? (
@@ -47,6 +47,7 @@ export default function ProjectModelsPage() {
                 <TR>
                   <TH className="min-w-[120px]">Label</TH>
                   <TH className="min-w-[200px] hidden sm:table-cell">Checkpoint</TH>
+                  <TH className="min-w-[120px] hidden lg:table-cell">Notes</TH>
                   <TH className="min-w-[100px] text-right">Actions</TH>
                 </TR>
               </THead>
@@ -63,6 +64,11 @@ export default function ProjectModelsPage() {
                     <TD className="hidden sm:table-cell">
                       <div className="truncate max-w-[200px] lg:max-w-[300px]" title={m.hf_checkpoint_id}>
                         {m.hf_checkpoint_id}
+                      </div>
+                    </TD>
+                    <TD className="hidden lg:table-cell">
+                      <div className="truncate max-w-[120px] xl:max-w-[200px]" title={m.notes || ''}>
+                        {m.notes || '-'}
                       </div>
                     </TD>
                     <TD className="text-right">
@@ -86,18 +92,28 @@ export default function ProjectModelsPage() {
   )
 }
 
-function NewModelDialog({ projectId, onCreated }: { projectId: string; onCreated: () => void }) {
+function NewModelDialog({ projectId, existingModels, onCreated }: { projectId: string; existingModels: Model[]; onCreated: () => void }) {
   const [open, setOpen] = useState(false)
   const [label, setLabel] = useState('')
   const [ckpt, setCkpt] = useState('')
   const [notes, setNotes] = useState('')
+  const [error, setError] = useState('')
+
+  const isDuplicate = Boolean(ckpt && existingModels.some(m => m.hf_checkpoint_id === ckpt))
+
   const submit = async () => {
+    if (isDuplicate) {
+      setError('This checkpoint is already registered in the project')
+      return
+    }
     try {
       await apiEx.models.create(projectId, { label, hf_checkpoint_id: ckpt, notes })
       setOpen(false)
-      setLabel(''); setCkpt(''); setNotes('')
+      setLabel(''); setCkpt(''); setNotes(''); setError('')
       onCreated()
-    } catch {}
+    } catch (err) {
+      setError('Failed to create model. Please try again.')
+    }
   }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -109,23 +125,54 @@ function NewModelDialog({ projectId, onCreated }: { projectId: string; onCreated
         <div className="space-y-3">
           <div>
             <Label htmlFor="label">Label</Label>
-            <Input id="label" value={label} onChange={(e) => setLabel(e.target.value)} />
+            <Input
+              id="label"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g., ResNet-50 v2, My custom model"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              A friendly name for this model in your project
+            </p>
           </div>
           <div>
             <Label htmlFor="ckpt">HuggingFace Model</Label>
             <ModelAutocomplete
               value={ckpt}
-              onValueChange={setCkpt}
+              onValueChange={(value) => { setCkpt(value); setError('') }}
               placeholder="Search for a HuggingFace model..."
             />
+            {isDuplicate && (
+              <p className="text-xs text-red-600 mt-1">
+                This checkpoint is already registered in the project
+              </p>
+            )}
+            {!isDuplicate && (
+              <p className="text-xs text-muted-foreground mt-1">
+                The HuggingFace model ID (e.g., microsoft/resnet-50)
+              </p>
+            )}
           </div>
           <div>
             <Label htmlFor="notes">Notes</Label>
-            <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional description, training details, or other notes..."
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Optional notes about this model configuration
+            </p>
           </div>
+          {error && !isDuplicate && (
+            <div className="text-xs text-red-600">
+              {error}
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={submit} disabled={!label || !ckpt}>Create</Button>
+            <Button onClick={submit} disabled={!label || !ckpt || isDuplicate}>Create</Button>
           </div>
         </div>
       </DialogContent>

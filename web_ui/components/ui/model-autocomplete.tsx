@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from 'react'
-import { Check, ChevronDown, Search } from 'lucide-react'
+import { Check, ChevronDown, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -62,6 +62,7 @@ export function ModelAutocomplete({
   }, [search])
 
   const selectedModel = models.find(model => model.id === value)
+  const hasSelection = value && value.length > 0
 
   return (
     <div className="space-y-2">
@@ -75,26 +76,34 @@ export function ModelAutocomplete({
         ))}
       </div>
 
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className={cn("w-full justify-between", className)}
-            disabled={disabled}
-          >
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              <span className="truncate">
-                {selectedModel ? selectedModel.id : placeholder}
-              </span>
-            </div>
-            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-full min-w-[400px] p-0" align="start">
-          <Command shouldFilter={false}>
+      <div className="relative">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className={cn("w-full justify-between", hasSelection ? "pr-12" : "pr-8", className, hasSelection && "text-foreground")}
+              disabled={disabled}
+            >
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <Search className={cn("h-4 w-4 flex-shrink-0", hasSelection ? "text-foreground" : "text-muted-foreground")} />
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className={cn("truncate text-left", hasSelection ? "text-foreground" : "text-muted-foreground")}>
+                    {hasSelection ? value : placeholder}
+                  </span>
+                  {hasSelection && selectedModel?.pipeline_tag && (
+                    <span className="text-xs text-muted-foreground truncate text-left">
+                      {selectedModel.pipeline_tag.replace('-', ' ')}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-full min-w-[400px] p-0" align="start">
+            <Command shouldFilter={false}>
             <div className="flex items-center border-b px-3">
               <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
               <Input
@@ -215,6 +224,16 @@ export function ModelAutocomplete({
           </Command>
         </PopoverContent>
       </Popover>
+      {hasSelection && (
+        <button
+          onClick={() => onValueChange('')}
+          className="absolute right-10 top-1/2 -translate-y-1/2 h-4 w-4 rounded-sm opacity-70 hover:opacity-100 hover:bg-muted z-10 flex items-center justify-center"
+          type="button"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+      </div>
     </div>
   )
 }

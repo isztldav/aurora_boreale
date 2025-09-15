@@ -18,13 +18,21 @@ def create_model(project_id: str, payload: ModelCreate, db: Session = Depends(ge
     proj = db.query(orm.Project).get(project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Project not found")
-    exists = (
+    label_exists = (
         db.query(orm.ModelRegistry)
         .filter(orm.ModelRegistry.project_id == project_id, orm.ModelRegistry.label == payload.label)
         .first()
     )
-    if exists:
+    if label_exists:
         raise HTTPException(status_code=400, detail="Model label already exists")
+
+    hf_checkpoint_exists = (
+        db.query(orm.ModelRegistry)
+        .filter(orm.ModelRegistry.project_id == project_id, orm.ModelRegistry.hf_checkpoint_id == payload.hf_checkpoint_id)
+        .first()
+    )
+    if hf_checkpoint_exists:
+        raise HTTPException(status_code=400, detail="Model checkpoint already exists in this project")
     row = orm.ModelRegistry(
         project_id=project_id,
         label=payload.label,

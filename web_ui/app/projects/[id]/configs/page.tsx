@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import { api, apiEx } from '@/lib/api'
+import { api, apiEx, Model } from '@/lib/api'
 import { Shell } from '@/components/shell/shell'
 import { ProjectNav } from '@/components/projects/project-nav'
 import { Table, THead, TBody, TR, TH, TD } from '@/components/ui/table'
@@ -26,7 +26,7 @@ export default function ProjectConfigsPage() {
   const qc = useQueryClient()
   const { data, isLoading, error } = useQuery({ queryKey: ['configs', { projectId }], queryFn: () => apiEx.configs.list(projectId) })
   const { data: groups } = useQuery({ queryKey: ['groups', { projectId }], queryFn: () => api.groups.list(projectId) })
-  const { data: models } = useQuery({ queryKey: ['models', { projectId }], queryFn: () => apiEx.models.list(projectId) })
+  const { data: models } = useQuery<Model[]>({ queryKey: ['models', { projectId }], queryFn: () => apiEx.models.list(projectId) })
   const { data: datasets } = useQuery({ queryKey: ['datasets', { projectId }], queryFn: () => apiEx.datasets.list(projectId) })
 
   return (
@@ -364,13 +364,18 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {/* Models from project registry */}
-                          {models.map((m) => (
-                            <SelectItem key={m.label} value={m.hf_checkpoint_id}>{m.label}</SelectItem>
+                          {(models as Model[])?.map((m) => (
+                            <SelectItem key={`project-model-${m.id}`} value={m.hf_checkpoint_id}>
+                              <div>
+                                <div className="font-medium">{m.label}</div>
+                                <div className="text-xs text-muted-foreground">{m.notes}</div>
+                              </div>
+                              </SelectItem>
                           ))}
 
                           {/* Models from global registry */}
                           {registryData?.success && Object.entries(registryData.data.models || {}).map(([key, model]: [string, any]) => (
-                            <SelectItem key={key} value={key}>
+                            <SelectItem key={`global-${key}`} value={key}>
                               <div>
                                 <div className="font-medium">{model.name}</div>
                                 <div className="text-xs text-muted-foreground">{model.description}</div>

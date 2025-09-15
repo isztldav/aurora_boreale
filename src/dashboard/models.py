@@ -164,6 +164,7 @@ class ModelRegistry(TimestampMixin, Base):
 
     __table_args__ = (
         Index("ix_models_project_label", "project_id", "label", unique=True),
+        Index("ix_models_project_hf_checkpoint", "project_id", "hf_checkpoint_id", unique=True),
     )
 
 
