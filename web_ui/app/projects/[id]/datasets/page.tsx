@@ -11,11 +11,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { SmartDatasetSelector } from '@/components/datasets/smart-dataset-selector'
+import { DatasetViewer } from '@/components/datasets/dataset-viewer'
 
 export default function ProjectDatasetsPage() {
   const params = useParams<{ id: string }>()
@@ -46,6 +48,7 @@ export default function ProjectDatasetsPage() {
               <TR>
                 <TH>Name</TH>
                 <TH>Root</TH>
+                <TH>Status</TH>
                 <TH className="text-right">Actions</TH>
               </TR>
             </THead>
@@ -53,9 +56,29 @@ export default function ProjectDatasetsPage() {
               {filtered.map((d: any) => (
                 <TR key={d.id}>
                   <TD className="font-medium">{d.name}</TD>
-                  <TD className="truncate max-w-[560px]" title={d.root_path}>{d.root_path}</TD>
+                  <TD className="truncate max-w-[300px]" title={d.root_path}>{d.root_path}</TD>
+                  <TD>
+                    {d.sample_stats ? (
+                      <Badge variant="outline" className="text-xs">
+                        {d.sample_stats.total_samples?.toLocaleString() || 0} samples
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs text-muted-foreground">
+                        Not analyzed
+                      </Badge>
+                    )}
+                  </TD>
                   <TD className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => apiEx.datasets.delete(d.id).then(() => qc.invalidateQueries({ queryKey: ['datasets', { projectId }] }))}>Delete</Button>
+                    <div className="flex items-center gap-2 justify-end">
+                      <DatasetViewer dataset={d} onUpdate={() => qc.invalidateQueries({ queryKey: ['datasets', { projectId }] })} />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => apiEx.datasets.delete(d.id).then(() => qc.invalidateQueries({ queryKey: ['datasets', { projectId }] }))}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </TD>
                 </TR>
               ))}
@@ -74,19 +97,31 @@ function NewDatasetDialog({ projectId, onCreated }: { projectId: string; onCreat
   const [datasetStructure, setDatasetStructure] = useState<any>(null)
 
   const submit = async () => {
+    // Validate structure before creation
+    if (datasetStructure && !datasetStructure.is_valid) {
+      toast.error('Dataset structure is invalid. Please ensure your dataset follows the train/val/test ImageFolder format.')
+      return
+    }
+
+    if (!datasetStructure) {
+      toast.error('Please analyze the dataset structure before creating.')
+      return
+    }
+
     try {
-      // Include analyzed structure if available
-      const payload: any = { name, root_path: root }
-      if (datasetStructure) {
-        payload.split_layout = {
+      // Include analyzed structure
+      const payload: any = {
+        name,
+        root_path: root,
+        split_layout: {
           splits: datasetStructure.splits,
           classes: datasetStructure.classes
-        }
-        payload.class_map = datasetStructure.classes.reduce((acc: any, cls: string, idx: number) => {
+        },
+        class_map: datasetStructure.classes.reduce((acc: any, cls: string, idx: number) => {
           acc[cls] = idx
           return acc
-        }, {})
-        payload.sample_stats = {
+        }, {}),
+        sample_stats: {
           total_samples: datasetStructure.total_samples,
           class_counts: datasetStructure.class_counts
         }
@@ -142,7 +177,7 @@ function NewDatasetDialog({ projectId, onCreated }: { projectId: string; onCreat
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button
               onClick={submit}
-              disabled={!name || !root || (datasetStructure && !datasetStructure.is_valid)}
+              disabled={!name || !root || !datasetStructure || (datasetStructure && !datasetStructure.is_valid)}
             >
               Create Dataset
             </Button>

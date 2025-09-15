@@ -170,8 +170,9 @@ def analyze_dataset_structure(path: str = Query(..., description="Dataset root p
         total_samples = 0
         sample_images = []
 
-        # Check for common split directories
-        for split_name in ["train", "val", "test", "validation"]:
+        # Check for standard split directories (train/val/test only - these are what the training code expects)
+        valid_splits = ["train", "val", "test"]
+        for split_name in valid_splits:
             split_dir = resolved_path / split_name
             if split_dir.exists() and split_dir.is_dir():
                 splits.append(split_name)
@@ -187,7 +188,7 @@ def analyze_dataset_structure(path: str = Query(..., description="Dataset root p
 
                         # Count images in class directory
                         image_files = [f for f in class_dir.iterdir()
-                                     if f.is_file() and f.suffix.lower() in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']]
+                                     if f.is_file() and f.suffix.lower() in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp']]
                         count = len(image_files)
                         split_counts[class_name] = count
                         total_samples += count
@@ -198,29 +199,9 @@ def analyze_dataset_structure(path: str = Query(..., description="Dataset root p
 
                 class_counts[split_name] = split_counts
 
-        # If no standard splits found, check if root contains class directories
-        if not splits:
-            class_dirs = [d for d in resolved_path.iterdir()
-                         if d.is_dir() and not d.name.startswith('.')]
-            if class_dirs:
-                splits = ["root"]
-                split_counts = {}
-                for class_dir in class_dirs:
-                    class_name = class_dir.name
-                    all_classes.add(class_name)
-
-                    image_files = [f for f in class_dir.iterdir()
-                                 if f.is_file() and f.suffix.lower() in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']]
-                    count = len(image_files)
-                    split_counts[class_name] = count
-                    total_samples += count
-
-                    sample_files = random.sample(image_files, min(3, len(image_files)))
-                    sample_images.extend([str(f) for f in sample_files])
-
-                class_counts["root"] = split_counts
-
-        is_valid = len(splits) > 0 and len(all_classes) > 0
+        # Determine if dataset structure is valid for training
+        # Valid if: has at least one of train/val/test AND has at least one class
+        is_valid = len(splits) > 0 and len(all_classes) > 0 and all(split in valid_splits for split in splits)
 
         return DatasetStructure(
             path=str(resolved_path),

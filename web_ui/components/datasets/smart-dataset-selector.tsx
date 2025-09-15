@@ -220,9 +220,23 @@ export function SmartDatasetSelector({ value, onChange, onDatasetAnalyzed }: Sma
                           : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
                       )}>
                         {structure.is_valid ? <Check className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-                        {structure.is_valid ? "Valid ImageFolder Structure" : "Invalid Structure"}
+                        {structure.is_valid ? "Valid Training Dataset" : "Invalid - Requires train/val/test splits"}
                       </div>
                     </div>
+
+                    {!structure.is_valid && (
+                      <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
+                        <CardContent className="pt-4">
+                          <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                            <strong>Required structure:</strong> Your dataset must contain at least one of these folders:
+                            <code className="mx-1 px-1 bg-yellow-200 dark:bg-yellow-800 rounded">train/</code>
+                            <code className="mx-1 px-1 bg-yellow-200 dark:bg-yellow-800 rounded">val/</code>
+                            <code className="mx-1 px-1 bg-yellow-200 dark:bg-yellow-800 rounded">test/</code>
+                            with class subdirectories containing images.
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4">
                       <Card>
