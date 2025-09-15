@@ -157,6 +157,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!web_ui/lib/
 lib64/
 parts/
 sdist/

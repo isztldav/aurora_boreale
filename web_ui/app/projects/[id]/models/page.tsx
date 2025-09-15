@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
+import { ModelAutocomplete } from '@/components/ui/model-autocomplete'
 
 export default function ProjectModelsPage() {
   const params = useParams<{ id: string }>()
@@ -111,8 +112,12 @@ function NewModelDialog({ projectId, onCreated }: { projectId: string; onCreated
             <Input id="label" value={label} onChange={(e) => setLabel(e.target.value)} />
           </div>
           <div>
-            <Label htmlFor="ckpt">HF Checkpoint</Label>
-            <Input id="ckpt" value={ckpt} onChange={(e) => setCkpt(e.target.value)} />
+            <Label htmlFor="ckpt">HuggingFace Model</Label>
+            <ModelAutocomplete
+              value={ckpt}
+              onValueChange={setCkpt}
+              placeholder="Search for a HuggingFace model..."
+            />
           </div>
           <div>
             <Label htmlFor="notes">Notes</Label>
