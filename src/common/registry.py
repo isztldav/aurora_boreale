@@ -366,51 +366,26 @@ class LossRegistry(Registry):
     """Registry for supported loss functions."""
 
     def register_defaults(self):
-        """Register default loss functions."""
-        self.register('cross_entropy', {
-            'name': 'Cross Entropy',
-            'description': 'Standard cross-entropy loss for multi-class classification',
-            'parameters': [],
-            'suitable_for': ['classification', 'multi-class']
-        })
+        """Register default loss functions from the losses module."""
+        # Import here to avoid circular imports
+        from .losses import get_supported_losses
 
-        self.register('focal_loss', {
-            'name': 'Focal Loss',
-            'description': 'Focal loss for addressing class imbalance',
-            'parameters': [
-                {'name': 'alpha', 'type': 'float', 'default': 1.0, 'description': 'Weighting factor'},
-                {'name': 'gamma', 'type': 'float', 'default': 2.0, 'description': 'Focusing parameter'}
-            ],
-            'suitable_for': ['classification', 'imbalanced']
-        })
+        supported_losses = get_supported_losses()
+        for loss_name, loss_info in supported_losses.items():
+            self.register(loss_name, loss_info)
 
 
 class OptimizerRegistry(Registry):
     """Registry for supported optimizers."""
 
     def register_defaults(self):
-        """Register default optimizers."""
-        self.register('adam', {
-            'name': 'Adam',
-            'description': 'Adam optimizer with momentum',
-            'parameters': [
-                {'name': 'lr', 'type': 'float', 'default': 1e-3, 'description': 'Learning rate'},
-                {'name': 'betas', 'type': 'list', 'default': [0.9, 0.999], 'description': 'Momentum coefficients'},
-                {'name': 'eps', 'type': 'float', 'default': 1e-8, 'description': 'Term for numerical stability'}
-            ],
-            'recommended_for': ['general', 'quick-experiments']
-        })
+        """Register default optimizers from the optimizers module."""
+        # Import here to avoid circular imports
+        from .optimizers import get_supported_optimizers
 
-        self.register('adamw', {
-            'name': 'AdamW',
-            'description': 'Adam with weight decay correction',
-            'parameters': [
-                {'name': 'lr', 'type': 'float', 'default': 5e-4, 'description': 'Learning rate'},
-                {'name': 'weight_decay', 'type': 'float', 'default': 0.05, 'description': 'Weight decay coefficient'},
-                {'name': 'betas', 'type': 'list', 'default': [0.9, 0.999], 'description': 'Momentum coefficients'}
-            ],
-            'recommended_for': ['transformers', 'fine-tuning', 'production']
-        })
+        supported_optimizers = get_supported_optimizers()
+        for optimizer_name, optimizer_info in supported_optimizers.items():
+            self.register(optimizer_name, optimizer_info)
 
 
 # Global registry instances

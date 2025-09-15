@@ -14,7 +14,6 @@ import time
 import numpy as np
 import torch
 from torch import nn
-from torch.optim import Adam, AdamW
 from torch.utils.tensorboard import SummaryWriter
 from transformers import get_cosine_schedule_with_warmup
 
@@ -22,7 +21,9 @@ from common.checkpoint import save_model_checkpoints
 from common.config import TrainConfig, save_train_config
 from common.cuda_helper import CUDAPrefetchLoader
 from common.data import build_dataloaders, build_label_maps
+from common.losses import build_loss_function
 from common.model import build_model
+from common.optimizers import build_optimizer
 from common.seed import get_device, set_seed
 from common.tb import create_tb_writer, log_confusion_matrix_table
 from common.transforms import build_transforms
@@ -113,32 +114,14 @@ def run_experiment(
         freeze_backbone=cfg.freeze_backbone,
     ).to(device)
 
-    # Build parameter groups to avoid weight decay on LayerNorm/bias (stability for ViT/Swin)
-    def build_param_groups(module: torch.nn.Module, weight_decay: float):
-        decay_params, no_decay_params = [], []
-        for name, param in module.named_parameters():
-            if not param.requires_grad:
-                continue
-            # Do not apply weight decay on bias, LayerNorm/Norms, or 1D parameters
-            if name.endswith("bias") or param.ndim == 1 or "norm" in name.lower() or "layernorm" in name.lower():
-                no_decay_params.append(param)
-            else:
-                decay_params.append(param)
-        return [
-            {"params": decay_params, "weight_decay": weight_decay},
-            {"params": no_decay_params, "weight_decay": 0.0},
-        ]
-
+    # Build optimizer using registry-based builder
     opt_name = getattr(cfg, "optimizer", "adam").lower()
-    if opt_name == "adamw":
-        param_groups = build_param_groups(model, cfg.weight_decay)
-        optimizer = AdamW(param_groups, lr=cfg.lr)
-    elif opt_name == "adam":
-        # Preserve previous behavior: no weight decay when using Adam
-        param_groups = build_param_groups(model, 0.0)
-        optimizer = Adam(param_groups, lr=cfg.lr)
-    else:
-        raise ValueError(f"Unsupported optimizer '{cfg.optimizer}'. Use 'adam' or 'adamw'.")
+    optimizer = build_optimizer(
+        optimizer_name=opt_name,
+        model=model,
+        lr=cfg.lr,
+        weight_decay=getattr(cfg, "weight_decay", 0.0)
+    )
     
     steps_per_epoch_eff = math.ceil(len(train_loader) / max(1, cfg.grad_accum_steps))
     num_training_steps = cfg.epochs * steps_per_epoch_eff
@@ -147,7 +130,9 @@ def run_experiment(
         num_warmup_steps=int(cfg.warmup_ratio * num_training_steps),
         num_training_steps=num_training_steps,
     )
-    loss_fn = nn.CrossEntropyLoss()
+    # Build loss function using registry-based builder
+    loss_name = getattr(cfg, "loss_name", "cross_entropy")
+    loss_fn = build_loss_function(loss_name)
     scaler = torch.GradScaler("cuda", enabled=torch.cuda.is_available())
 
     # Logging
