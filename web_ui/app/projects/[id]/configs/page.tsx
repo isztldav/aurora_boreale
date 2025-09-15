@@ -37,7 +37,7 @@ export default function ProjectConfigsPage() {
         <div className="rounded-lg border">
           <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h2 className="text-sm font-medium">Training Configurations</h2>
-            <Badge variant="secondary">{data?.length || 0} configs</Badge>
+            <Badge variant="default">{data?.length || 0} configs</Badge>
           </div>
           {isLoading ? <div className="p-4">Loading...</div> : error ? <div className="p-4 text-red-600">Failed to load configs</div> : (
             <div className="overflow-x-auto">

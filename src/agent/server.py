@@ -175,8 +175,8 @@ class RunnerAgent:
             job, run = row
             # Mark dequeued/running
             run.state = "running"
-            run.started_at = datetime.utcnow()
-            job.dequeued_at = datetime.utcnow()
+            run.started_at = datetime.now(timezone.utc)
+            job.dequeued_at = datetime.now(timezone.utc)
             db.add(run)
             db.add(job)
             db.commit()
@@ -308,7 +308,7 @@ class RunnerAgent:
                         r.state = "canceled"
                     else:
                         r.state = "succeeded"
-                    r.finished_at = datetime.utcnow()
+                    r.finished_at = datetime.now(timezone.utc)
                     db2.add(r)
                     # Release GPUs
                     self._release_gpus(db2, r)
@@ -325,7 +325,7 @@ class RunnerAgent:
                 r = db3.get(models.Run, run.id)
                 if r:
                     r.state = "failed"
-                    r.finished_at = datetime.utcnow()
+                    r.finished_at = datetime.now(timezone.utc)
                     # Update job error
                     job = db3.query(models.Job).filter(models.Job.run_id == run.id).first()
                     if job:
@@ -437,7 +437,7 @@ def create_app(agent_id: Optional[str] = None, gpu_index: Optional[int] = None) 
                 row.name = row.name or f"gpu:{gpu.get('uuid') or 'idx-'+str(gpu.get('index',0))}"
                 row.host = host
                 row.labels = labels
-            row.last_heartbeat_at = datetime.utcnow()
+            row.last_heartbeat_at = datetime.now(timezone.utc)
             db.add(row)
             db.commit()
             print(f"[agent] Registered agent id={row.id} name={row.name} host={row.host}")
@@ -457,7 +457,7 @@ def create_app(agent_id: Optional[str] = None, gpu_index: Optional[int] = None) 
             gpu_row.name = gpu.get("name")
             gpu_row.total_mem_mb = gpu.get("total_mem_mb")
             gpu_row.compute_capability = gpu.get("compute_capability")
-            gpu_row.last_seen_at = datetime.utcnow()
+            gpu_row.last_seen_at = datetime.now(timezone.utc)
             db.add(gpu_row)
             db.commit()
             print(
@@ -477,7 +477,7 @@ def create_app(agent_id: Optional[str] = None, gpu_index: Optional[int] = None) 
                     try:
                         a = db_hb.get(models.Agent, uuid.UUID(effective_agent_id))
                         if a:
-                            a.last_heartbeat_at = datetime.utcnow()
+                            a.last_heartbeat_at = datetime.now(timezone.utc)
                             db_hb.add(a)
                         g = (
                             db_hb.query(models.GPU)
@@ -488,7 +488,7 @@ def create_app(agent_id: Optional[str] = None, gpu_index: Optional[int] = None) 
                             .first()
                         )
                         if g:
-                            g.last_seen_at = datetime.utcnow()
+                            g.last_seen_at = datetime.now(timezone.utc)
                             db_hb.add(g)
                         db_hb.commit()
                     finally:

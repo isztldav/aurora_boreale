@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
@@ -69,7 +69,7 @@ async def websocket_endpoint(websocket: WebSocket, topic: str | None = Query(def
                 await websocket.send_text(json.dumps({
                     "type": "echo",
                     "received": msg,
-                    "at": datetime.utcnow().isoformat() + "Z",
+                    "at": datetime.now(timezone.utc).isoformat() + "Z",
                 }))
     except WebSocketDisconnect:
         ws_manager.disconnect(client)

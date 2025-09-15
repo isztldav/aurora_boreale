@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 from fastapi import APIRouter, Depends, HTTPException, Query
 from urllib import request as _urlreq
@@ -135,7 +135,7 @@ def cancel_run(run_id: str, db: Session = Depends(get_db)):
     if run.state in {"succeeded", "failed", "canceled"}:
         return {"ok": True, "state": run.state}
     run.state = "canceled"
-    run.finished_at = datetime.utcnow()
+    run.finished_at = datetime.now(timezone.utc)
     # Release GPUs if any
     if run.agent_id and run.gpu_indices:
         for idx in run.gpu_indices:
@@ -169,7 +169,7 @@ def start_run(run_id: str, db: Session = Depends(get_db)):
     if not run:
         raise HTTPException(status_code=404, detail="Not found")
     run.state = "running"
-    run.started_at = datetime.utcnow()
+    run.started_at = datetime.now(timezone.utc)
     db.add(run)
     db.commit()
     # Broadcast update
@@ -191,7 +191,7 @@ def finish_run(run_id: str, success: bool = True, db: Session = Depends(get_db))
     if not run:
         raise HTTPException(status_code=404, detail="Not found")
     run.state = "succeeded" if success else "failed"
-    run.finished_at = datetime.utcnow()
+    run.finished_at = datetime.now(timezone.utc)
     if run.agent_id and run.gpu_indices:
         for idx in run.gpu_indices:
             gpu = (
