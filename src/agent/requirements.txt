@@ -18,3 +18,5 @@ psycopg2-binary>=2.9
 --extra-index-url https://download.pytorch.org/whl/cu129
 torch
 torchvision
+
+kornia
