@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { formatDateTime, shortId } from '@/lib/utils'
 import { makeRunsWS } from '@/lib/ws'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
+import { toast } from 'sonner'
 
 export default function ProjectPage() {
   const params = useParams<{ id: string }>()
@@ -28,6 +29,10 @@ export default function ProjectPage() {
   const { data: runs, isLoading, error } = useQuery({
     queryKey: ['runs', { projectId }],
     queryFn: () => api.runs.list({ project_id: projectId }),
+  })
+  const { data: configs } = useQuery({
+    queryKey: ['configs', { projectId }],
+    queryFn: () => apiEx.configs.list(projectId),
   })
   const [q, setQ] = useState('')
   const [states, setStates] = useState<Record<string, boolean>>({ running: true, queued: true, failed: true, succeeded: true, canceled: true })
@@ -85,6 +90,33 @@ export default function ProjectPage() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg border mb-8">
+        <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h2 className="text-sm font-medium">Training Configurations</h2>
+          <div className="flex items-center gap-2">
+            <Badge variant="default">{configs?.length || 0} configs</Badge>
+            <Button
+              size="sm"
+              onClick={() => window.location.href = `/projects/${projectId}/configs`}
+            >
+              Manage Configs
+            </Button>
+          </div>
+        </div>
+        <div className="p-4 text-sm text-muted-foreground">
+          {configs && configs.length > 0 ? (
+            <>
+              You have {configs.length} training configuration{configs.length !== 1 ? 's' : ''} available.
+            </>
+          ) : (
+            <>No training configurations found. </>
+          )}
+          <a href={`/projects/${projectId}/configs`} className="text-primary hover:underline">
+            {configs && configs.length > 0 ? 'View and manage configurations' : 'Create your first config'}
+          </a>.
         </div>
       </section>
 
@@ -361,3 +393,4 @@ function RunLiveDialog({ runId, onOpenChange }: { runId: string | null; onOpenCh
     </Dialog>
   )
 }
+

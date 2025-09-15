@@ -127,6 +127,12 @@ export const apiEx = {
       group_id?: string
       config_json: any
     }) => http(`/configs`, { method: 'POST', body: JSON.stringify(payload) }),
+    update: (configId: string, payload: {
+      name?: string
+      group_id?: string
+      config_json?: any
+    }) => http(`/configs/${configId}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    delete: (configId: string) => http(`/configs/${configId}`, { method: 'DELETE' }),
     queueRun: (configId: string, payload: { agent_id?: string; gpu_indices?: number[]; docker_image?: string; env?: any; priority?: number } = {}) =>
       http(`/runs/from-config/${configId}`, { method: 'POST', body: JSON.stringify(payload) }),
   },

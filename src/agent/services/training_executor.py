@@ -106,6 +106,10 @@ class TrainingExecutor:
         # Normalize path separators
         raw_path = raw_path.replace("\\", "/")
 
+        # If path already starts with datasets root, return it as-is (but normalized)
+        if raw_path.startswith(self._datasets_root + "/") or raw_path == self._datasets_root:
+            return os.path.normpath(raw_path)
+
         # Remove leading slashes and dots, resolve parent traversals
         raw_path = raw_path.lstrip("/\\.")
         parts = []

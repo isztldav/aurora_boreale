@@ -1,8 +1,8 @@
 "use client"
 
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { api, apiEx, Model } from '@/lib/api'
 import { Shell } from '@/components/shell/shell'
 import { ProjectNav } from '@/components/projects/project-nav'
@@ -22,12 +22,17 @@ import { toast } from 'sonner'
 
 export default function ProjectConfigsPage() {
   const params = useParams<{ id: string }>()
+  const searchParams = useSearchParams()
   const projectId = params.id
+  const editConfigId = searchParams.get('edit')
   const qc = useQueryClient()
   const { data, isLoading, error } = useQuery({ queryKey: ['configs', { projectId }], queryFn: () => apiEx.configs.list(projectId) })
   const { data: groups } = useQuery({ queryKey: ['groups', { projectId }], queryFn: () => api.groups.list(projectId) })
   const { data: models } = useQuery<Model[]>({ queryKey: ['models', { projectId }], queryFn: () => apiEx.models.list(projectId) })
   const { data: datasets } = useQuery({ queryKey: ['datasets', { projectId }], queryFn: () => apiEx.datasets.list(projectId) })
+
+  // State for delete dialog
+  const [deleteConfigId, setDeleteConfigId] = useState<string | null>(null)
 
   return (
     <Shell>
@@ -57,7 +62,23 @@ export default function ProjectConfigsPage() {
                       <TD>{c.version}</TD>
                       <TD>{c.status}</TD>
                       <TD className="text-right">
-                        <QueueRunDialog projectId={projectId} configId={c.id} />
+                        <div className="flex items-center gap-1 justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(`/projects/${projectId}/configs?edit=${c.id}`, '_self')}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => setDeleteConfigId(c.id)}
+                          >
+                            Delete
+                          </Button>
+                          <QueueRunDialog projectId={projectId} configId={c.id} />
+                        </div>
                       </TD>
                     </TR>
                   ))}
@@ -67,14 +88,35 @@ export default function ProjectConfigsPage() {
           )}
         </div>
 
-        {/* New Config Form */}
-        <ConfigForm projectId={projectId} groups={groups || []} models={models || []} datasets={datasets || []} onCreated={() => qc.invalidateQueries({ queryKey: ['configs', { projectId }] })} />
+        {/* Config Form (New/Edit) */}
+        <ConfigForm
+          projectId={projectId}
+          editConfigId={editConfigId}
+          groups={groups || []}
+          models={models || []}
+          datasets={datasets || []}
+          onCreated={() => qc.invalidateQueries({ queryKey: ['configs', { projectId }] })}
+        />
+
+        {/* Delete Dialog */}
+        <DeleteConfigDialog
+          configId={deleteConfigId}
+          projectId={projectId}
+          onOpenChange={(v: boolean) => !v && setDeleteConfigId(null)}
+        />
       </div>
     </Shell>
   )
 }
 
-function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projectId: string; groups: { id: string; name: string }[]; models: { label: string; hf_checkpoint_id: string }[]; datasets: { id: string; name: string; root_path: string }[]; onCreated: () => void }) {
+function ConfigForm({ projectId, editConfigId, groups, models, datasets, onCreated }: { projectId: string; editConfigId?: string | null; groups: { id: string; name: string }[]; models: { label: string; hf_checkpoint_id: string }[]; datasets: { id: string; name: string; root_path: string }[]; onCreated: () => void }) {
+  // Load config for editing
+  const { data: editConfig } = useQuery({
+    queryKey: ['config', { id: editConfigId }],
+    queryFn: () => apiEx.configs.get(editConfigId!),
+    enabled: !!editConfigId,
+  })
+
   // Basic Configuration
   const [name, setName] = useState('baseline')
   const [groupId, setGroupId] = useState<string | undefined>(undefined)
@@ -131,6 +173,83 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
   const [modelSuffix, setModelSuffix] = useState('')
   const [savePerEpoch, setSavePerEpoch] = useState(false)
 
+  // Initialize root when datasets are loaded and no dataset is selected
+  useEffect(() => {
+    if (datasets && datasets.length > 0 && !datasetId && !root && !editConfig) {
+      const firstDataset = datasets[0]
+      setDatasetId(firstDataset.id)
+      setRoot(firstDataset.root_path)
+    }
+  }, [datasets, datasetId, root, editConfig])
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editConfig) {
+      const cfg = editConfig.config_json
+      setName(editConfig.name)
+      setGroupId(editConfig.group_id)
+
+      // Dataset
+      setRoot(cfg.root || '')
+      const matchingDataset = datasets.find(d => d.root_path === cfg.root)
+      setDatasetId(matchingDataset?.id || 'custom')
+      setMaxPerClass(cfg.max_datapoints_per_class || 10000)
+
+      // Model
+      setModelFlavour(cfg.model_flavour || 'google/vit-base-patch16-224')
+      setLoss(cfg.loss_name || 'cross_entropy')
+      setLoadPretrained(cfg.load_pretrained !== false)
+      setFreezeBackbone(cfg.freeze_backbone || false)
+
+      // Training
+      setBatchSize(cfg.batch_size || 64)
+      setEpochs(cfg.epochs || 10)
+      setSeed(cfg.seed || 42)
+
+      // Optimization
+      setOptimizer(cfg.optimizer || 'adamw')
+      setLr(cfg.lr || 5e-4)
+      setWeightDecay(cfg.weight_decay || 0.05)
+      setWarmup(cfg.warmup_ratio || 0.05)
+      setGradAccum(cfg.grad_accum_steps || 1)
+      setMaxGradNorm(cfg.max_grad_norm || 1.0)
+
+      // Data Loading
+      setWorkers(cfg.num_workers || 4)
+      setPrefetch(cfg.prefetch_factor || 4)
+      setPersistentWorkers(cfg.persistent_workers || false)
+
+      // Augmentation
+      if (cfg.gpu_batch_aug?.preset) {
+        setGpuPresetMode(true)
+        setSelectedGpuPreset(cfg.gpu_batch_aug.preset)
+        setGpuBatchAug('')
+      } else if (cfg.gpu_batch_aug) {
+        setGpuPresetMode(false)
+        setGpuBatchAug(JSON.stringify(cfg.gpu_batch_aug, null, 2))
+        setSelectedGpuPreset('none')
+      }
+
+      if (cfg.cpu_color_jitter?.preset) {
+        setCpuPresetMode(true)
+        setSelectedCpuPreset(cfg.cpu_color_jitter.preset)
+        setCpuColorJitter('')
+      } else if (cfg.cpu_color_jitter) {
+        setCpuPresetMode(false)
+        setCpuColorJitter(JSON.stringify(cfg.cpu_color_jitter, null, 2))
+        setSelectedCpuPreset('none')
+      }
+
+      // Monitoring
+      setMonitorMetric(cfg.monitor_metric || 'val_acc@1')
+      setMonitorMode(cfg.monitor_mode || 'max')
+      setTbRoot(cfg.tb_root || 'runs')
+      setCkptDir(cfg.ckpt_dir || 'checkpoints')
+      setModelSuffix(cfg.model_suffix || '')
+      setSavePerEpoch(cfg.save_per_epoch_checkpoint || false)
+    }
+  }, [editConfig, datasets])
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
@@ -138,7 +257,7 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
       let gpuBatchAugObj = null
       let cpuColorJitterObj = null
 
-      if (gpuPresetMode && selectedGpuPreset) {
+      if (gpuPresetMode && selectedGpuPreset && selectedGpuPreset !== 'none') {
         gpuBatchAugObj = { preset: selectedGpuPreset }
       } else if (!gpuPresetMode && gpuBatchAug.trim()) {
         try {
@@ -149,7 +268,7 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
         }
       }
 
-      if (cpuPresetMode && selectedCpuPreset) {
+      if (cpuPresetMode && selectedCpuPreset && selectedCpuPreset !== 'none') {
         cpuColorJitterObj = { preset: selectedCpuPreset }
       } else if (!cpuPresetMode && cpuColorJitter.trim()) {
         try {
@@ -160,10 +279,20 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
         }
       }
 
+      // Validate required fields
+      if (!root) {
+        toast.error('Dataset root path is required')
+        return
+      }
+      if (!modelFlavour) {
+        toast.error('Model architecture is required')
+        return
+      }
+
       const cfg = {
         // Dataset
         root,
-        max_datapoints_per_class: Number(maxPerClass),
+        max_datapoints_per_class: Number(maxPerClass) || 10000,
 
         // Model
         model_flavour: modelFlavour,
@@ -172,22 +301,22 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
         freeze_backbone: Boolean(freezeBackbone),
 
         // Training
-        batch_size: Number(batchSize),
-        epochs: Number(epochs),
-        seed: Number(seed),
+        batch_size: Number(batchSize) || 64,
+        epochs: Number(epochs) || 10,
+        seed: Number(seed) || 42,
         autocast_dtype: 'torch.bfloat16',
 
         // Optimization
         optimizer,
-        lr: Number(lr),
-        weight_decay: Number(weightDecay),
-        max_grad_norm: Number(maxGradNorm),
-        warmup_ratio: Number(warmup),
-        grad_accum_steps: Number(gradAccum),
+        lr: Number(lr) || 5e-4,
+        weight_decay: Number(weightDecay) || 0.05,
+        max_grad_norm: Number(maxGradNorm) || 1.0,
+        warmup_ratio: Number(warmup) || 0.05,
+        grad_accum_steps: Number(gradAccum) || 1,
 
         // Data Loading
-        num_workers: Number(workers),
-        prefetch_factor: Number(prefetch),
+        num_workers: Number(workers) || 4,
+        prefetch_factor: Number(prefetch) || 4,
         persistent_workers: Boolean(persistentWorkers),
 
         // Augmentations
@@ -207,9 +336,15 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
         eval_topk: [3, 5],
       }
 
-      await apiEx.configs.create({ project_id: projectId, name, group_id: groupId, config_json: cfg })
+      if (editConfigId) {
+        await apiEx.configs.update(editConfigId, { name, group_id: groupId, config_json: cfg })
+        toast.success('Config updated successfully')
+        window.location.href = `/projects/${projectId}/configs`
+      } else {
+        await apiEx.configs.create({ project_id: projectId, name, group_id: groupId, config_json: cfg })
+        toast.success('Config created successfully')
+      }
       onCreated()
-      toast.success('Config created successfully')
     } catch (e: any) {
       toast.error(e?.message || 'Failed to create config')
     }
@@ -218,9 +353,9 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
   return (
     <Card>
       <CardHeader>
-        <CardTitle>New Training Configuration</CardTitle>
+        <CardTitle>{editConfigId ? 'Edit Training Configuration' : 'New Training Configuration'}</CardTitle>
         <CardDescription>
-          Create a new training configuration with organized settings for datasets, models, training parameters, and augmentations.
+          {editConfigId ? 'Edit the training configuration settings.' : 'Create a new training configuration with organized settings for datasets, models, training parameters, and augmentations.'}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -774,18 +909,35 @@ function ConfigForm({ projectId, groups, models, datasets, onCreated }: { projec
           </Tabs>
 
           <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => {
-              // Reset form to defaults
-              setName('baseline')
-              setGroupId(undefined)
-              setRoot('')
-              setDatasetId(undefined)
-            }}>
-              Reset to Defaults
-            </Button>
-            <Button type="submit">
-              Create Configuration
-            </Button>
+            {editConfigId ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.location.href = `/projects/${projectId}/configs`}
+                >
+                  Cancel Editing
+                </Button>
+                <Button type="submit">
+                  Update Configuration
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button type="button" variant="outline" onClick={() => {
+                  // Reset form to defaults
+                  setName('baseline')
+                  setGroupId(undefined)
+                  setRoot('')
+                  setDatasetId(undefined)
+                }}>
+                  Reset to Defaults
+                </Button>
+                <Button type="submit">
+                  Create Configuration
+                </Button>
+              </>
+            )}
           </div>
         </form>
       </CardContent>
@@ -859,6 +1011,48 @@ function QueueRunDialog({ projectId, configId }: { projectId: string; configId: 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={submit} disabled={!agentId}>Queue</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function DeleteConfigDialog({ configId, projectId, onOpenChange }: { configId: string | null; projectId: string; onOpenChange: (open: boolean) => void }) {
+  const qc = useQueryClient()
+  const { data: config } = useQuery({
+    queryKey: ['config', { id: configId }],
+    queryFn: () => apiEx.configs.get(configId!),
+    enabled: !!configId,
+  })
+
+  const handleDelete = async () => {
+    if (!configId) return
+    try {
+      await apiEx.configs.delete(configId)
+      qc.invalidateQueries({ queryKey: ['configs', { projectId }] })
+      onOpenChange(false)
+      toast.success('Configuration deleted successfully')
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to delete configuration')
+    }
+  }
+
+  return (
+    <Dialog open={!!configId} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogTitle>Delete Configuration</DialogTitle>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete the configuration "{config?.name}"? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Delete
+            </Button>
           </div>
         </div>
       </DialogContent>
