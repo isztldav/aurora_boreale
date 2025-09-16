@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict
-from typing import Optional, Tuple, Any, Union, Iterable, Dict
+from typing import Optional, Tuple, Any, Union, Iterable, Dict, List
 import os
 import json
 import torch
@@ -53,6 +53,11 @@ class TrainConfig:
     # Optional CPU-side color jitter (pre-normalization), applied on training only.
     # Example: {"preset": "cfp_color_v1"} or {"params": {"brightness": 0.15, "contrast": 0.15, "saturation": 0.1, "hue": 0.02}, "p": 0.8}
     cpu_color_jitter: Optional[Dict[str, Any]] = None
+
+    # Dataset labels - populated during training run
+    class_labels: Optional[List[str]] = None  # List of class names in order
+    label2id: Optional[Dict[str, int]] = None  # Mapping from class name to ID
+    id2label: Optional[Dict[int, str]] = None  # Mapping from ID to class name
 
 
 def _convert_jsonable(obj: Any):

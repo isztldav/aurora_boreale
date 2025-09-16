@@ -104,6 +104,11 @@ def run_experiment(
     label2id, id2label = build_label_maps(train_loader.loader.dataset)  # type: ignore[attr-defined]
     num_labels = len(label2id)
 
+    # Populate the config with the discovered labels for persistence
+    cfg.class_labels = train_loader.loader.dataset.classes  # type: ignore[attr-defined]
+    cfg.label2id = label2id
+    cfg.id2label = id2label
+
     # Model + training setup
     model = build_model(
         model_flavour=cfg.model_flavour,
