@@ -11,6 +11,7 @@ from PIL import Image
 import torch
 import torch.nn.functional as F
 from transformers import AutoImageProcessor, AutoModelForImageClassification
+from huggingface_hub import login, logout
 
 from dashboard.db import SessionLocal
 from dashboard import models
@@ -48,6 +49,9 @@ class ModelTester:
             # Load checkpoint and config
             checkpoint_path, config = self._load_checkpoint_and_config(run)
 
+            # Setup HuggingFace authentication if needed
+            self._setup_hf_authentication(db, run, config)
+
             # Prepare image
             image = self._prepare_image(image_data)
 
@@ -68,8 +72,12 @@ class ModelTester:
             }
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             raise ValueError(f"Model testing failed: {str(e)}")
+            
         finally:
+            logout()
             db.close()
 
     def _load_checkpoint_and_config(self, run: models.Run) -> Tuple[str, Dict]:
@@ -135,14 +143,29 @@ class ModelTester:
             id2label = {int(k): v for k, v in id2label.items()}
 
         try:
-            model = build_model(model_flavour=model_flavour, 
+            # Set environment variables to avoid git dependencies
+            os.environ['HF_HUB_DISABLE_TELEMETRY'] = '1'
+            os.environ['HF_HUB_OFFLINE'] = '0'  # Allow downloads but avoid git
+
+            print(f"[model_tester] Loading model architecture for {model_flavour}")
+            model = build_model(model_flavour=model_flavour,
                                 num_labels=num_labels,
                                 id2label=id2label,
                                 label2id=label2id,
                                 load_pretrained=False)
-            processor = AutoImageProcessor.from_pretrained(model_flavour)
+
+            print(f"[model_tester] Loading processor for {model_flavour}")
+            processor = AutoImageProcessor.from_pretrained(
+                model_flavour,
+                use_auth_token=True if self._has_hf_auth() else None,
+                trust_remote_code=False,  # Security: don't execute remote code
+                local_files_only=False   # Allow downloading if needed
+            )
 
         except Exception as e:
+            print(f"[model_tester] Error loading model architecture: {str(e)}")
+            import traceback
+            traceback.print_exc()
             raise ValueError(f"Failed to load model architecture: {str(e)}")
 
         # Load trained weights
@@ -217,3 +240,49 @@ class ModelTester:
 
         finally:
             db.close()
+
+    def _setup_hf_authentication(self, db, run: models.Run, config: Dict) -> None:
+        """Setup HuggingFace authentication if needed for the model."""
+        model_flavour = config.get("model_flavour")
+        if not model_flavour:
+            return
+
+        # Get the run's config to find project_id
+        train_config = db.query(models.TrainConfigModel).filter(models.TrainConfigModel.id == run.config_id).first()
+        if not train_config:
+            return
+
+        # Get HF token for this model
+        hf_token = self._get_hf_token_for_model(db, train_config.project_id, model_flavour)
+        if hf_token:
+            login(token=hf_token)
+
+    def _get_hf_token_for_model(self, db, project_id: str, model_flavour: str) -> Optional[str]:
+        """Get HuggingFace token for a specific model from the model registry."""
+        if not model_flavour:
+            return None
+
+        # Look up the model in the project's model registry
+        model_registry = (
+            db.query(models.ModelRegistry)
+            .filter(
+                models.ModelRegistry.project_id == project_id,
+                models.ModelRegistry.hf_checkpoint_id == model_flavour
+            )
+            .first()
+        )
+
+        if model_registry and model_registry.hf_token:
+            print(f"[model_tester] Using HF token for private model: {model_flavour}")
+            return model_registry.hf_token
+
+        return None
+
+    def _has_hf_auth(self) -> bool:
+        """Check if HuggingFace authentication is currently active."""
+        try:
+            from huggingface_hub import whoami
+            whoami()
+            return True
+        except Exception:
+            return False

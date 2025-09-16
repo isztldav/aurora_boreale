@@ -6,6 +6,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Install system dependencies including git for HuggingFace model downloads
+RUN apt-get update && apt-get install -y \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install agent dependencies separately for better build caching
 COPY src/agent/requirements.txt /tmp/agent-requirements.txt
 
