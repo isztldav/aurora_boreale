@@ -24,37 +24,38 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
     const text = await res.text().catch(() => '')
 
     // Try to parse JSON error response for better error messages
+    let errorData: any = null
     try {
-      const errorData = JSON.parse(text)
-
-      // Handle FastAPI validation errors
-      if (errorData.detail && Array.isArray(errorData.detail)) {
-        const fieldErrors = errorData.detail.map((err: any) => {
-          if (err.msg && err.loc) {
-            const field = err.loc.join('.')
-            return `${field}: ${err.msg}`
-          }
-          return err.msg || 'Validation error'
-        }).join(', ')
-        throw new Error(fieldErrors)
-      }
-
-      // Handle single detail message (most common)
-      if (typeof errorData.detail === 'string') {
-        throw new Error(errorData.detail)
-      }
-
-      // Handle other error formats
-      if (errorData.message) {
-        throw new Error(errorData.message)
-      }
-
-      // Fallback to original text
-      throw new Error(text || `HTTP ${res.status}`)
+      errorData = JSON.parse(text)
     } catch (parseError) {
       // If JSON parsing fails, use original text
       throw new Error(text || `HTTP ${res.status}`)
     }
+
+    // Handle FastAPI validation errors
+    if (errorData.detail && Array.isArray(errorData.detail)) {
+      const fieldErrors = errorData.detail.map((err: any) => {
+        if (err.msg && err.loc) {
+          const field = err.loc.join('.')
+          return `${field}: ${err.msg}`
+        }
+        return err.msg || 'Validation error'
+      }).join(', ')
+      throw new Error(fieldErrors)
+    }
+
+    // Handle single detail message (most common)
+    if (typeof errorData.detail === 'string') {
+      throw new Error(errorData.detail)
+    }
+
+    // Handle other error formats
+    if (errorData.message) {
+      throw new Error(errorData.message)
+    }
+
+    // Fallback to original text
+    throw new Error(text || `HTTP ${res.status}`)
   }
   // Some endpoints may return empty responses
   const ct = res.headers.get('content-type') || ''
