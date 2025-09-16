@@ -146,7 +146,6 @@ export const api = {
       return http<Run[]>(`/runs${q ? `?${q}` : ''}`)
     },
     get: (runId: string) => http<Run>(`/runs/${runId}`),
-    start: (runId: string) => http(`/runs/${runId}/start`, { method: 'POST' }),
     finish: (runId: string, success = true) =>
       http(`/runs/${runId}/finish?success=${success ? 'true' : 'false'}`, { method: 'POST' }),
     cancel: (runId: string) => http(`/runs/${runId}/cancel`, { method: 'POST' }),

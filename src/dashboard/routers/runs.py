@@ -134,6 +134,21 @@ def cancel_run(run_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Not found")
     if run.state in {"succeeded", "failed", "canceled"}:
         return {"ok": True, "state": run.state}
+
+    # If run is active and has an agent, send cancel request to agent
+    if run.state == "running" and run.agent_id:
+        try:
+            base = _agent_base_url(db, run)
+            url = f"{base}/cancel"
+            req = _urlreq.Request(url, method="POST")
+            with _urlreq.urlopen(req, timeout=5.0) as resp:
+                # Agent will handle the state change
+                return {"ok": True, "message": "Cancel request sent to agent"}
+        except Exception as e:
+            # If agent is unreachable, update state directly
+            print(f"[runs] Agent unreachable for cancel, updating state directly: {e}")
+
+    # For queued runs or when agent is unreachable, update state directly
     run.state = "canceled"
     run.finished_at = datetime.now(timezone.utc)
     # Release GPUs if any
@@ -162,27 +177,6 @@ def cancel_run(run_id: str, db: Session = Depends(get_db)):
     return {"ok": True, "state": run.state}
 
 
-@router.post("/{run_id}/start")
-def start_run(run_id: str, db: Session = Depends(get_db)):
-    # Manual control for MVP (no scheduler)
-    run = db.query(models.Run).get(run_id)
-    if not run:
-        raise HTTPException(status_code=404, detail="Not found")
-    run.state = "running"
-    run.started_at = datetime.now(timezone.utc)
-    db.add(run)
-    db.commit()
-    # Broadcast update
-    try:
-        payload = {
-            "type": "run.updated",
-            "run": _serialize_run(run),
-        }
-        import anyio
-        anyio.from_thread.run(ws_manager.broadcast_json, payload, topic="runs")
-    except Exception:
-        pass
-    return {"ok": True, "state": run.state}
 
 
 @router.post("/{run_id}/finish")
@@ -190,6 +184,23 @@ def finish_run(run_id: str, success: bool = True, db: Session = Depends(get_db))
     run = db.query(models.Run).get(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Not found")
+    if run.state in {"succeeded", "failed", "canceled"}:
+        return {"ok": True, "state": run.state}
+
+    # If run is active and has an agent, send finish request to agent
+    if run.state == "running" and run.agent_id:
+        try:
+            base = _agent_base_url(db, run)
+            url = f"{base}/finish"
+            req = _urlreq.Request(url, method="POST")
+            with _urlreq.urlopen(req, timeout=5.0) as resp:
+                # Agent will handle the state change
+                return {"ok": True, "message": "Finish request sent to agent"}
+        except Exception as e:
+            # If agent is unreachable, update state directly
+            print(f"[runs] Agent unreachable for finish, updating state directly: {e}")
+
+    # For non-running runs or when agent is unreachable, update state directly
     run.state = "succeeded" if success else "failed"
     run.finished_at = datetime.now(timezone.utc)
     if run.agent_id and run.gpu_indices:

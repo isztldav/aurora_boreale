@@ -213,3 +213,13 @@ class AgentAppFactory:
         def halt():
             agent_manager.request_halt()
             return {"ok": True}
+
+        @app.post("/cancel")
+        def cancel():
+            agent_manager.request_cancel()
+            return {"ok": True}
+
+        @app.post("/finish")
+        def finish():
+            agent_manager.request_finish()
+            return {"ok": True}

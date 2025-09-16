@@ -55,6 +55,18 @@ export default function ProjectPage() {
       if (msg.type === 'run.updated' || msg.type === 'run.created') {
         const run: Run | undefined = msg.run
         if (run && run.project_id === projectId) {
+          // Update the cache directly for more responsive UI
+          qc.setQueryData(['runs', { projectId }], (oldData: Run[] | undefined) => {
+            if (!oldData) return oldData
+
+            if (msg.type === 'run.created') {
+              return [run, ...oldData]
+            } else {
+              return oldData.map(r => r.id === run.id ? run : r)
+            }
+          })
+
+          // Also invalidate to ensure consistency
           qc.invalidateQueries({ queryKey: ['runs', { projectId }] })
         }
       }
@@ -247,23 +259,13 @@ export default function ProjectPage() {
                           </Button>
                         )}
                         {r.state === 'queued' && (
-                          <>
-                            <Button size="sm" onClick={() => api.runs.start(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))} className="shrink-0">
-                              <span className="hidden sm:inline">Start</span>
-                              <span className="sm:hidden">▶️</span>
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => api.runs.cancel(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))} className="shrink-0">
-                              <span className="hidden sm:inline">Cancel</span>
-                              <span className="sm:hidden">❌</span>
-                            </Button>
-                          </>
+                          <Button variant="outline" size="sm" onClick={() => api.runs.cancel(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))} className="shrink-0">
+                            <span className="hidden sm:inline">Cancel</span>
+                            <span className="sm:hidden">❌</span>
+                          </Button>
                         )}
                         {r.state === 'running' && (
                           <>
-                            <Button variant="secondary" size="sm" onClick={() => api.runs.finish(r.id, true).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))} className="shrink-0">
-                              <span className="hidden sm:inline">Finish</span>
-                              <span className="sm:hidden">✅</span>
-                            </Button>
                             <Button variant="outline" size="sm" onClick={() => api.runs.halt(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))} className="shrink-0">
                               <span className="hidden sm:inline">Halt</span>
                               <span className="sm:hidden">⏸️</span>

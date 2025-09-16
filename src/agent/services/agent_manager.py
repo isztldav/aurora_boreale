@@ -22,6 +22,8 @@ class AgentManager:
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
         self._halt_requested = threading.Event()
+        self._cancel_requested = threading.Event()
+        self._finish_requested = threading.Event()
 
         # Current run state
         self._current_run_id: Optional[str] = None
@@ -62,6 +64,16 @@ class AgentManager:
         """Request halt of current training run."""
         self._halt_requested.set()
         print("[agent_manager] Halt requested")
+
+    def request_cancel(self) -> None:
+        """Request immediate cancellation of current training run."""
+        self._cancel_requested.set()
+        print("[agent_manager] Cancel requested")
+
+    def request_finish(self) -> None:
+        """Request early finish of current training run."""
+        self._finish_requested.set()
+        print("[agent_manager] Finish requested")
 
     def stop(self) -> None:
         """Stop the agent manager."""
@@ -110,6 +122,8 @@ class AgentManager:
     def _initialize_run_state(self, run_context: RunContext) -> None:
         """Initialize run state tracking."""
         self._halt_requested.clear()
+        self._cancel_requested.clear()
+        self._finish_requested.clear()
 
         with self._lock:
             self._current_run_id = run_context.run_id
@@ -124,9 +138,15 @@ class AgentManager:
 
     def _finalize_run_state(self, run_context: RunContext, success: bool) -> None:
         """Finalize run state based on completion status."""
-        if self._halt_requested.is_set():
+        if self._cancel_requested.is_set():
             self._run_repository.mark_run_canceled(run_context.run_id)
             status = "canceled"
+        elif self._halt_requested.is_set():
+            self._run_repository.mark_run_canceled(run_context.run_id)
+            status = "canceled"
+        elif self._finish_requested.is_set():
+            self._run_repository.mark_run_succeeded(run_context.run_id)
+            status = "succeeded"
         elif success:
             self._run_repository.mark_run_succeeded(run_context.run_id)
             status = "succeeded"
@@ -177,7 +197,10 @@ class AgentManager:
 
     def _should_stop(self) -> bool:
         """Check if training should be stopped."""
-        return self._halt_requested.is_set() or self._stop_event.is_set()
+        return (self._halt_requested.is_set() or
+                self._cancel_requested.is_set() or
+                self._finish_requested.is_set() or
+                self._stop_event.is_set())
 
     def _calculate_eta(self) -> Optional[float]:
         """Calculate estimated time to completion."""
