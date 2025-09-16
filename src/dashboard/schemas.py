@@ -84,6 +84,12 @@ class TrainConfigCreate(BaseModel):
     config_json: TrainConfigIn
 
 
+class TrainConfigUpdate(BaseModel):
+    name: Optional[str] = None
+    group_id: Optional[str] = None
+    config_json: Optional[TrainConfigIn] = None
+
+
 class TrainConfigOut(BaseModel):
     id: UUID
     project_id: UUID

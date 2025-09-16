@@ -518,6 +518,13 @@ function ModelTestingDialog({ runId, onOpenChange }: { runId: string | null; onO
     setError(null)
   }
 
+  // Reset state when runId changes or dialog opens/closes
+  useEffect(() => {
+    if (runId) {
+      reset()
+    }
+  }, [runId])
+
   return (
     <Dialog open={!!runId} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[900px] w-[95vw]">

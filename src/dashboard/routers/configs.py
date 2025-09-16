@@ -4,7 +4,7 @@ import hashlib
 
 from ..db import get_db
 from .. import models
-from ..schemas import TrainConfigCreate, TrainConfigOut, TrainConfigIn
+from ..schemas import TrainConfigCreate, TrainConfigOut, TrainConfigIn, TrainConfigUpdate
 
 router = APIRouter(prefix="/configs", tags=["configs"])
 
@@ -50,6 +50,55 @@ def get_config(config_id: str, db: Session = Depends(get_db)):
     if not row:
         raise HTTPException(status_code=404, detail="Not found")
     return row
+
+
+@router.put("/{config_id}", response_model=TrainConfigOut)
+def update_config(config_id: str, payload: TrainConfigUpdate, db: Session = Depends(get_db)):
+    row = db.query(models.TrainConfigModel).get(config_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    # Update fields that are provided
+    if payload.name is not None:
+        # If name is changing, we need to create a new version
+        if payload.name != row.name:
+            latest = (
+                db.query(models.TrainConfigModel)
+                .filter(models.TrainConfigModel.project_id == row.project_id, models.TrainConfigModel.name == payload.name)
+                .order_by(models.TrainConfigModel.version.desc())
+                .first()
+            )
+            row.version = (latest.version + 1) if latest else 1
+        row.name = payload.name
+
+    if payload.group_id is not None:
+        row.group_id = payload.group_id
+
+    if payload.config_json is not None:
+        cfg_json = payload.config_json.model_dump()
+        row.config_json = cfg_json
+        # Update hash when config changes
+        row.hash = hashlib.sha256(str(cfg_json).encode("utf-8")).hexdigest()
+
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@router.delete("/{config_id}")
+def delete_config(config_id: str, db: Session = Depends(get_db)):
+    row = db.query(models.TrainConfigModel).get(config_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    # Check if there are any runs using this config
+    runs = db.query(models.Run).filter(models.Run.config_id == config_id).count()
+    if runs > 0:
+        raise HTTPException(status_code=400, detail=f"Cannot delete config: {runs} run(s) are using this configuration")
+
+    db.delete(row)
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("/{config_id}/validate")
