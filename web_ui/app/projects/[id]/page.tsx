@@ -40,6 +40,7 @@ export default function ProjectPage() {
   const [tbRunId, setTbRunId] = useState<string | null>(null)
   const [cfgRun, setCfgRun] = useState<{ id: string; name: string; config_id: string } | null>(null)
   const [openRunId, setOpenRunId] = useState<string | null>(null)
+  const [testRunId, setTestRunId] = useState<string | null>(null)
   const filtered = useMemo(() => {
     const sel = new Set(Object.entries(states).filter(([, v]) => v).map(([k]) => k))
     return (runs || []).filter((r) => (
@@ -225,6 +226,12 @@ export default function ProjectPage() {
                           <span className="hidden sm:inline">TensorBoard</span>
                           <span className="sm:hidden">📈</span>
                         </Button>
+                        {r.state === 'succeeded' && (
+                          <Button variant="outline" size="sm" onClick={() => setTestRunId(r.id)} className="shrink-0">
+                            <span className="hidden sm:inline">Test Model</span>
+                            <span className="sm:hidden">🧪</span>
+                          </Button>
+                        )}
                         {r.state === 'queued' && (
                           <>
                             <Button size="sm" onClick={() => api.runs.start(r.id).then(() => qc.invalidateQueries({ queryKey: ['runs', { projectId }] }))} className="shrink-0">
@@ -266,6 +273,8 @@ export default function ProjectPage() {
       <RunConfigDialog run={cfgRun} onOpenChange={(v) => !v && setCfgRun(null)} />
       {/* Live Run Viewer */}
       <RunLiveDialog runId={openRunId} onOpenChange={(v) => !v && setOpenRunId(null)} />
+      {/* Model Testing Dialog */}
+      <ModelTestingDialog runId={testRunId} onOpenChange={(v) => !v && setTestRunId(null)} />
       <Dialog open={!!tbRunId} onOpenChange={(v) => !v && setTbRunId(null)}>
         <DialogContent className="max-w-[1200px] w-[95vw]">
           <div className="flex items-center justify-between mb-2">
@@ -422,3 +431,184 @@ function RunLiveDialog({ runId, onOpenChange }: { runId: string | null; onOpenCh
   )
 }
 
+function ModelTestingDialog({ runId, onOpenChange }: { runId: string | null; onOpenChange: (open: boolean) => void }) {
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [testResults, setTestResults] = useState<any>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const { data: runInfo, isLoading: loadingInfo } = useQuery({
+    queryKey: ['model-testing-info', { runId }],
+    queryFn: () => api.modelTesting.getRunInfo(runId!),
+    enabled: !!runId,
+  })
+
+  const handleImageSelect = (file: File) => {
+    setSelectedImage(file)
+    setTestResults(null)
+    setError(null)
+
+    // Create preview
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    const files = Array.from(e.dataTransfer.files)
+    const imageFile = files.find(f => f.type.startsWith('image/'))
+    if (imageFile) {
+      handleImageSelect(imageFile)
+    }
+  }
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleImageSelect(file)
+    }
+  }
+
+  const handleTest = async () => {
+    if (!selectedImage || !runId) return
+
+    setIsUploading(true)
+    setError(null)
+
+    try {
+      const result = await api.modelTesting.testImage(runId, selectedImage)
+      setTestResults(result)
+    } catch (err: any) {
+      setError(err.message || 'Failed to test image')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const reset = () => {
+    setSelectedImage(null)
+    setImagePreview(null)
+    setTestResults(null)
+    setError(null)
+  }
+
+  return (
+    <Dialog open={!!runId} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[900px] w-[95vw]">
+        <div className="flex items-center justify-between mb-4">
+          <DialogTitle>Test Model{runInfo ? ` • ${runInfo.run_name}` : ''}</DialogTitle>
+          <Button variant="outline" size="sm" onClick={reset}>
+            Reset
+          </Button>
+        </div>
+
+        {loadingInfo ? (
+          <div className="text-sm">Loading model info…</div>
+        ) : !runInfo?.can_test ? (
+          <div className="text-sm text-red-600">
+            This model cannot be tested. Ensure the run completed successfully and has a checkpoint.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Model Info */}
+            <div className="bg-muted p-3 rounded text-sm">
+              <div className="font-medium">Model Information</div>
+              <div className="mt-1 space-y-1">
+                <div>Classes: {runInfo.num_classes}</div>
+                <div>Epoch: {runInfo.epoch}</div>
+                <div>Best {runInfo.monitor_metric}: {runInfo.best_value}</div>
+                {runInfo.class_labels.length > 0 && (
+                  <div>
+                    Labels: {runInfo.class_labels.slice(0, 5).join(', ')}
+                    {runInfo.class_labels.length > 5 && ` ... (+${runInfo.class_labels.length - 5} more)`}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Image Upload */}
+              <div>
+                <div className="text-sm font-medium mb-2">Upload Image</div>
+                {!selectedImage ? (
+                  <div
+                    className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                    onDrop={handleDrop}
+                    onDragOver={(e) => e.preventDefault()}
+                    onClick={() => document.getElementById('image-upload')?.click()}
+                  >
+                    <div className="text-muted-foreground mb-2">
+                      Drag and drop an image here, or click to select
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Supports JPG, PNG, WebP (max 10MB)
+                    </div>
+                    <input
+                      id="image-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileInput}
+                      className="hidden"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <img
+                        src={imagePreview!}
+                        alt="Preview"
+                        className="w-full h-48 object-contain border rounded"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={handleTest} disabled={isUploading} className="flex-1">
+                        {isUploading ? 'Testing...' : 'Test Image'}
+                      </Button>
+                      <Button variant="outline" onClick={reset}>
+                        Change Image
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Results */}
+              <div>
+                <div className="text-sm font-medium mb-2">Predictions</div>
+                {error ? (
+                  <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
+                    {error}
+                  </div>
+                ) : !testResults ? (
+                  <div className="text-sm text-muted-foreground bg-muted p-3 rounded">
+                    Upload an image to see predictions
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {testResults.predictions.slice(0, 10).map((pred: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className={`flex items-center justify-between p-2 rounded ${
+                          idx === 0 ? 'bg-primary/10 border-primary/20 border' : 'bg-muted'
+                        }`}
+                      >
+                        <div className="font-medium">{pred.class_name}</div>
+                        <div className="text-sm">
+                          {pred.percentage}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}

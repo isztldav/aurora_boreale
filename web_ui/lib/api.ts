@@ -113,6 +113,60 @@ export const api = {
     logs: (runId: string, tail = 200) => http<{ lines: string[]; truncated: boolean }>(`/runs/${runId}/logs?tail=${tail}`),
     tensorboard: (runId: string) => http<{ url: string }>(`/runs/${runId}/tensorboard`),
   },
+  modelTesting: {
+    getRunInfo: (runId: string) => http<{
+      run_id: string;
+      run_name: string;
+      state: string;
+      has_checkpoint: boolean;
+      num_classes: number;
+      class_labels: string[];
+      epoch: number;
+      best_value: number;
+      monitor_metric: string;
+      can_test: boolean;
+    }>(`/model-testing/${runId}/info`),
+    testImage: (runId: string, imageFile: File) => {
+      const formData = new FormData();
+      formData.append('image', imageFile);
+      return http<{
+        run_id: string;
+        run_name: string;
+        predictions: Array<{
+          class_id: number;
+          class_name: string;
+          confidence: number;
+          percentage: string;
+        }>;
+        model_info: {
+          model_flavour: string;
+          num_classes: number;
+          epoch: number;
+          best_value: number;
+          monitor_metric: string;
+        };
+      }>(`/model-testing/${runId}/test`, { method: 'POST', body: formData });
+    },
+    getClasses: (runId: string) => http<{
+      run_id: string;
+      run_name: string;
+      num_classes: number;
+      class_labels: string[];
+    }>(`/model-testing/${runId}/classes`),
+    listTestableRuns: () => http<{
+      runs: Array<{
+        run_id: string;
+        run_name: string;
+        project_id: string;
+        state: string;
+        num_classes: number;
+        epoch: number;
+        best_value: number;
+        monitor_metric: string;
+        finished_at: string;
+      }>;
+    }>(`/model-testing/`),
+  },
   groups: {
     list: (projectId: string) => http<{ id: string; name: string }[]>(`/groups/project/${projectId}`),
   },

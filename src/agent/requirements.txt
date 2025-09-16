@@ -1,5 +1,6 @@
 # Core server
 fastapi>=0.110
+python-multipart
 uvicorn[standard]>=0.23
 pydantic>=2.3
 SQLAlchemy>=2.0
@@ -10,6 +11,7 @@ tqdm>=4.66
 matplotlib>=3.7
 torchmetrics>=1.2
 transformers>=4.38
+huggingface-hub
 tensorboard>=2.14
 pillow>=9.4
 psycopg2-binary>=2.9
