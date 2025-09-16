@@ -133,6 +133,8 @@ export const api = {
   projects: {
     list: () => http<Project[]>(`/projects`),
     create: (payload: { name: string; description?: string }) => http<Project>(`/projects`, { method: 'POST', body: JSON.stringify(payload) }),
+    update: (id: string, payload: { name?: string; description?: string }) => http<Project>(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    delete: (id: string) => http<{ ok: boolean }>(`/projects/${id}`, { method: 'DELETE' }),
   },
   runs: {
     list: (params: { project_id?: string; state?: string } = {}) => {

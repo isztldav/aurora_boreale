@@ -18,14 +18,17 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { formatDateTime } from '@/lib/utils'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { useQueryClient } from '@tanstack/react-query'
 
 export function ProjectsTable() {
   const { data = [], isLoading, error } = useQuery({ queryKey: ['projects'], queryFn: api.projects.list })
+  const qc = useQueryClient()
   const [selected, setSelected] = React.useState<Record<string, boolean>>({})
   const [q, setQ] = React.useState('')
   const [dateFrom, setDateFrom] = React.useState<Date | undefined>(undefined)
   const [dateTo, setDateTo] = React.useState<Date | undefined>(undefined)
   const [view, setView] = React.useState<'all' | 'recent'>('all')
+  const [editProject, setEditProject] = React.useState<Project | null>(null)
 
   const filtered = React.useMemo(() => {
     let res = data
@@ -96,6 +99,7 @@ export function ProjectsTable() {
                   <TH>Name</TH>
                   <TH>Created</TH>
                   <TH>Description</TH>
+                  <TH className="text-right">Actions</TH>
                 </TR>
               </THead>
               <TBody>
@@ -105,6 +109,34 @@ export function ProjectsTable() {
                     <TD className="font-medium"><Link className="hover:underline" href={`/projects/${p.id}`}>{p.name}</Link></TD>
                     <TD className="text-muted-foreground">{formatDateTime(p.created_at)}</TD>
                     <TD className="truncate max-w-[520px]">{p.description || '—'}</TD>
+                    <TD className="text-right">
+                      <div className="flex items-center gap-1 justify-end">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setEditProject(p)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={async () => {
+                            if (confirm(`Delete project "${p.name}"? This action cannot be undone.`)) {
+                              try {
+                                await api.projects.delete(p.id)
+                                qc.invalidateQueries({ queryKey: ['projects'] })
+                                toast.success('Project deleted')
+                              } catch (e: any) {
+                                toast.error(e?.message || 'Failed to delete project')
+                              }
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </TD>
                   </TR>
                 ))}
               </TBody>
@@ -112,6 +144,7 @@ export function ProjectsTable() {
           )}
         </div>
       </div>
+      <EditProjectDialog project={editProject} onOpenChange={(open) => !open && setEditProject(null)} />
     </div>
   )
 }
@@ -187,15 +220,84 @@ function NewProjectDialog() {
   )
 }
 
+function EditProjectDialog({ project, onOpenChange }: { project: Project | null; onOpenChange: (open: boolean) => void }) {
+  const qc = useQueryClient()
+  const [name, setName] = React.useState('')
+  const [desc, setDesc] = React.useState('')
+
+  React.useEffect(() => {
+    if (project) {
+      setName(project.name)
+      setDesc(project.description || '')
+    }
+  }, [project])
+
+  const submit = async () => {
+    if (!project) return
+    try {
+      await api.projects.update(project.id, {
+        name: name.trim(),
+        description: desc.trim() || undefined
+      })
+      qc.invalidateQueries({ queryKey: ['projects'] })
+      onOpenChange(false)
+      toast.success('Project updated')
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to update project')
+    }
+  }
+
+  return (
+    <Dialog open={!!project} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogTitle>Edit Project</DialogTitle>
+        <div className="space-y-3">
+          <div>
+            <Label htmlFor="edit-name">Name</Label>
+            <Input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="edit-desc">Description</Label>
+            <Textarea id="edit-desc" value={desc} onChange={(e) => setDesc(e.target.value)} />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button onClick={submit} disabled={!name.trim()}>Update</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function BulkActions({ selected }: { selected: string[] }) {
+  const qc = useQueryClient()
   const disabled = selected.length === 0
+
+  const handleBulkDelete = async () => {
+    if (selected.length === 0) return
+
+    const confirmText = `Delete ${selected.length} project${selected.length !== 1 ? 's' : ''}? This action cannot be undone.`
+    if (!confirm(confirmText)) return
+
+    try {
+      await Promise.all(selected.map(id => api.projects.delete(id)))
+      qc.invalidateQueries({ queryKey: ['projects'] })
+      toast.success(`Deleted ${selected.length} project${selected.length !== 1 ? 's' : ''}`)
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to delete projects')
+    }
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" disabled={disabled}>Actions</Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem disabled>Delete (soon)</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleBulkDelete}>
+          Delete ({selected.length})
+        </DropdownMenuItem>
         <DropdownMenuItem disabled>Export (soon)</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
