@@ -20,6 +20,7 @@ import { formatDateTime, shortId } from '@/lib/utils'
 import { makeRunsWS } from '@/lib/ws'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
 import { toast } from 'sonner'
+import { Alert } from '@/components/ui/alert'
 
 export default function ProjectPage() {
   const params = useParams<{ id: string }>()
@@ -82,14 +83,27 @@ export default function ProjectPage() {
         <div className="col-span-1 lg:col-span-3 rounded-lg border p-4">
           <h2 className="text-sm font-medium mb-2">Runs by state</h2>
           <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byState}>
-                <XAxis dataKey="state" />
-                <YAxis allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {byState.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <Alert className="max-w-md">
+                  <div className="flex items-center space-x-2">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <span>No training runs yet. Create a config and start your first run!</span>
+                  </div>
+                </Alert>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={byState}>
+                  <XAxis dataKey="state" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </section>
