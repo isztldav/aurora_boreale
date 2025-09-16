@@ -180,12 +180,14 @@ function KPIHeader({ projects }: { projects: Project[] }) {
 }
 
 function NewProjectDialog() {
+  const qc = useQueryClient()
   const [open, setOpen] = React.useState(false)
   const [name, setName] = React.useState('')
   const [desc, setDesc] = React.useState('')
   const submit = async () => {
     try {
       await api.projects.create({ name, description: desc || undefined })
+      qc.invalidateQueries({ queryKey: ['projects'] })
       setOpen(false)
       setName('')
       setDesc('')
