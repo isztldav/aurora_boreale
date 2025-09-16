@@ -318,6 +318,8 @@ function RunConfigDialog({ run, onOpenChange }: { run: { id: string; name: strin
 }
 
 function RunLiveDialog({ runId, onOpenChange }: { runId: string | null; onOpenChange: (open: boolean) => void }) {
+  const [realtimeLogs, setRealtimeLogs] = useState<string[]>([])
+
   const { data: status, error: statusErr, isLoading: loadingStatus } = useQuery({
     queryKey: ['run-status', { runId }],
     queryFn: () => api.runs.status(runId!),
@@ -328,8 +330,34 @@ function RunLiveDialog({ runId, onOpenChange }: { runId: string | null; onOpenCh
     queryKey: ['run-logs', { runId }],
     queryFn: () => api.runs.logs(runId!, 300),
     enabled: !!runId,
-    refetchInterval: runId ? 3000 : false,
+    refetchInterval: runId && !realtimeLogs.length ? 3000 : false, // Stop polling when we have realtime logs
   })
+
+  // Set up WebSocket for real-time logs
+  useEffect(() => {
+    if (!runId) {
+      setRealtimeLogs([])
+      return
+    }
+
+    const ws = makeRunsWS((msg) => {
+      if (msg.type === 'run.log' && msg.run_id === runId) {
+        const timestamp = new Date(msg.timestamp).toLocaleTimeString('en-US', { hour12: false })
+        const levelPrefix = msg.level !== 'info' ? `[${msg.level.toUpperCase()}]` : ''
+        const sourcePrefix = msg.source !== 'agent' ? `[${msg.source}]` : ''
+        const prefix = `${timestamp} ${levelPrefix}${sourcePrefix}`.trim()
+        const logLine = `${prefix} ${msg.message}`
+
+        setRealtimeLogs(prev => [...prev, logLine])
+      }
+    })
+
+    ws.connect()
+    return () => {
+      ws.disconnect()
+      setRealtimeLogs([])
+    }
+  }, [runId])
   const qc = useQueryClient()
   const halt = async () => {
     if (!runId) return
@@ -378,13 +406,13 @@ function RunLiveDialog({ runId, onOpenChange }: { runId: string | null; onOpenCh
           </div>
           <div className="lg:col-span-2">
             <div className="text-xs text-muted-foreground mb-1">Agent Logs</div>
-            {loadingLogs ? (
+            {loadingLogs && !realtimeLogs.length ? (
               <div className="text-sm">Loading logs…</div>
-            ) : logsErr ? (
+            ) : logsErr && !realtimeLogs.length ? (
               <div className="text-sm text-red-600">Failed to load logs</div>
             ) : (
               <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-[70vh]">
-{(logs?.lines || []).join('\n')}
+{(realtimeLogs.length > 0 ? realtimeLogs : (logs?.lines || [])).join('\n')}
               </pre>
             )}
           </div>

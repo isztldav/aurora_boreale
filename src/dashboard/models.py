@@ -183,3 +183,18 @@ class Augmentation(TimestampMixin, Base):
     __table_args__ = (
         Index("ix_aug_project_name", "project_id", "name", unique=True),
     )
+
+
+class RunLog(TimestampMixin, Base):
+    __tablename__ = "run_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("runs.id", ondelete="CASCADE"))
+    timestamp: Mapped[datetime] = mapped_column(nullable=False)
+    level: Mapped[str] = mapped_column(String(10), default="info")  # debug, info, warning, error
+    source: Mapped[str] = mapped_column(String(20), default="agent")  # agent, executor, training
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (
+        Index("ix_run_logs_run_timestamp", "run_id", "timestamp"),
+    )

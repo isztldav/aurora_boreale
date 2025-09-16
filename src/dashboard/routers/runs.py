@@ -218,9 +218,37 @@ def finish_run(run_id: str, success: bool = True, db: Session = Depends(get_db))
 
 
 @router.get("/{run_id}/logs")
-def get_logs(run_id: str, tail: int = 200):
-    # Placeholder: logs not implemented yet
-    return {"lines": ["[stub] logs are not implemented in MVP"], "truncated": False}
+def get_logs(run_id: str, tail: int = 200, db: Session = Depends(get_db)):
+    """Get recent log entries for a training run."""
+    # Verify run exists and get project context
+    run = db.query(models.Run).filter(models.Run.id == run_id).first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    # Query log entries, most recent first
+    log_query = (
+        db.query(models.RunLog)
+        .filter(models.RunLog.run_id == run_id)
+        .order_by(models.RunLog.timestamp.desc())
+        .limit(tail)
+    )
+
+    log_entries = log_query.all()
+
+    # Format logs as lines (reverse to get chronological order)
+    lines = []
+    for log in reversed(log_entries):
+        timestamp = log.timestamp.strftime("%H:%M:%S")
+        level_prefix = f"[{log.level.upper()}]" if log.level != "info" else ""
+        source_prefix = f"[{log.source}]" if log.source != "agent" else ""
+        prefix = f"{timestamp} {level_prefix}{source_prefix}".strip()
+        lines.append(f"{prefix} {log.message}")
+
+    # Determine if logs were truncated
+    total_logs = db.query(models.RunLog).filter(models.RunLog.run_id == run_id).count()
+    truncated = total_logs > tail
+
+    return {"lines": lines, "truncated": truncated}
 
 
 @router.get("/{run_id}/tensorboard")

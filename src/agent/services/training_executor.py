@@ -13,6 +13,7 @@ from common.config import TrainConfig
 from common import runner as train_runner
 
 from ..domain import RunContext, TrainingProgress
+from .log_streamer import LogStreamer
 
 
 class TrainingExecutor:
@@ -39,7 +40,13 @@ class TrainingExecutor:
             True if training completed successfully, False otherwise
         """
         db = SessionLocal()
+        log_streamer = LogStreamer(run_context.run_id)
+
         try:
+            # Start log capture
+            log_streamer.start_capture()
+            log_streamer.log_message(f"Training started for run {run_context.run_name}", "info", "agent")
+
             # Load training configuration
             train_config = self._build_train_config(db, run_context)
 
@@ -57,12 +64,20 @@ class TrainingExecutor:
             # Update run status
             self._update_run_completion_status(db, run_context, success)
 
+            log_streamer.log_message(
+                f"Training {'completed successfully' if success else 'failed'} for run {run_context.run_name}",
+                "info" if success else "error",
+                "agent"
+            )
+
             return success
 
         except Exception as e:
+            log_streamer.log_message(f"Training error: {str(e)}", "error", "agent")
             self._handle_training_error(db, run_context, e)
             return False
         finally:
+            log_streamer.stop_capture()
             db.close()
             logout()
 
