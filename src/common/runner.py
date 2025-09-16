@@ -70,6 +70,7 @@ def run_experiment(
     cfg: TrainConfig,
     progress_cb: Optional[Callable[[int, int, float, Optional[str]], None]] = None,
     should_stop: Optional[Callable[[], bool]] = None,
+    log_streamer=None,
 ) -> str:
     """Run a full training experiment.
 
@@ -173,6 +174,8 @@ def run_experiment(
                 grad_accum_steps=cfg.grad_accum_steps,
                 autocast_dtype=cfg.autocast_dtype,
                 batch_transform=train_batch_tf,
+                log_streamer=log_streamer,
+                total_epochs=cfg.epochs,
             )
             global_step += steps_per_epoch
 

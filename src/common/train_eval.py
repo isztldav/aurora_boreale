@@ -15,6 +15,7 @@ from torchmetrics.classification import (
 )
 from common.visuals import plot_confusion_matrix, plot_roc_micro, save_figure
 from tqdm.auto import tqdm
+from .progress_tracker import tqdm_with_logging
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 from common.cuda_helper import CUDAPrefetchLoader
@@ -35,7 +36,8 @@ def train_one_epoch(
     max_grad_norm: Optional[float] = None,
     grad_accum_steps: int = 1,
     batch_transform: Optional[torch.nn.Module] = None,
-    
+    log_streamer = None,
+    total_epochs: int = 1,
 )-> Dict[str, float]:
     """Train one full epoch.
 
@@ -49,7 +51,19 @@ def train_one_epoch(
     n_batches = 0
     global_step = global_step_start
 
-    progress_bar = tqdm(dataloader, total=len(dataloader), desc="Processing", unit="batch", leave=True)
+    # Use custom progress tracker if log_streamer available, otherwise use tqdm
+    if log_streamer:
+        progress_bar = tqdm_with_logging(
+            dataloader,
+            desc=f"Epoch {epoch + 1}/{total_epochs}",
+            total=len(dataloader),
+            log_streamer=log_streamer,
+            epoch=epoch + 1,
+            total_epochs=total_epochs,
+            leave=True
+        )
+    else:
+        progress_bar = tqdm(dataloader, total=len(dataloader), desc="Processing", unit="batch", leave=True)
     optimizer.zero_grad(set_to_none=True)
     for batch_idx, (input, expected) in enumerate(progress_bar):
         input = input.to(device, non_blocking=True)
@@ -146,7 +160,8 @@ def evaluate(
     total_loss = 0.0
     nb = 0
 
-    progress_bar = tqdm(dataloader, total=len(dataloader), desc="Processing", unit="batch")
+    # Use simpler progress for evaluation (no log streaming needed)
+    progress_bar = tqdm(dataloader, total=len(dataloader), desc="Evaluating", unit="batch")
     for batch_idx, (X, y) in enumerate(progress_bar):
         X = X.to(device, non_blocking=True)
         y = y.to(device, non_blocking=True)

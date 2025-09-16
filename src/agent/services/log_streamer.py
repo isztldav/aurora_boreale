@@ -25,6 +25,8 @@ class LogStreamer:
         self._original_stderr = sys.stderr
         self._is_capturing = False
         self._lock = threading.Lock()
+        self._last_progress_time = 0
+        self._progress_throttle_seconds = 2.0  # Only log progress every 2 seconds
 
     def start_capture(self):
         """Start capturing stdout/stderr to database."""
@@ -54,6 +56,32 @@ class LogStreamer:
         """Manually log a message to the database."""
         self._store_log(message, level, source)
 
+    def log_progress(self, epoch: int, total_epochs: int, batch: int, total_batches: int,
+                    loss: float = None, accuracy: float = None):
+        """Log training progress with throttling."""
+        import time
+        current_time = time.time()
+
+        # Throttle progress updates
+        if current_time - self._last_progress_time < self._progress_throttle_seconds:
+            return
+
+        self._last_progress_time = current_time
+
+        # Create a concise progress message
+        progress_pct = (batch / total_batches) * 100 if total_batches > 0 else 0
+        epoch_info = f"Epoch {epoch}/{total_epochs}"
+        batch_info = f"Batch {batch}/{total_batches} ({progress_pct:.1f}%)"
+
+        parts = [epoch_info, batch_info]
+        if loss is not None:
+            parts.append(f"Loss: {loss:.4f}")
+        if accuracy is not None:
+            parts.append(f"Acc: {accuracy:.4f}")
+
+        message = " | ".join(parts)
+        self._store_log(message, "info", "training")
+
     def _store_log(self, message: str, level: str, source: str):
         """Store a log message to the database."""
         db = SessionLocal()
@@ -72,7 +100,6 @@ class LogStreamer:
             # Broadcast log event via WebSocket if available
             if ws_manager:
                 try:
-                    import asyncio
                     log_event = {
                         "type": "run.log",
                         "run_id": self.run_id,
@@ -81,8 +108,8 @@ class LogStreamer:
                         "source": source,
                         "message": message.strip()
                     }
-                    # Schedule the broadcast
-                    asyncio.create_task(ws_manager.broadcast_json(log_event, topic="runs"))
+                    # Schedule the broadcast safely
+                    self._safe_broadcast(log_event)
                 except Exception:
                     # Don't let WebSocket errors break logging
                     pass
@@ -92,6 +119,31 @@ class LogStreamer:
             pass
         finally:
             db.close()
+
+    def _safe_broadcast(self, log_event: dict):
+        """Safely broadcast log event to WebSocket clients."""
+        try:
+            import asyncio
+            import threading
+
+            # Check if we're in an async context
+            try:
+                loop = asyncio.get_running_loop()
+                # We're in an async context, schedule the coroutine
+                loop.create_task(ws_manager.broadcast_json(log_event, topic="runs"))
+            except RuntimeError:
+                # No running event loop, run in thread
+                def run_broadcast():
+                    try:
+                        asyncio.run(ws_manager.broadcast_json(log_event, topic="runs"))
+                    except Exception:
+                        pass
+
+                thread = threading.Thread(target=run_broadcast, daemon=True)
+                thread.start()
+        except Exception:
+            # Silently fail to avoid breaking training
+            pass
 
 
 class LogCapture:
@@ -110,9 +162,39 @@ class LogCapture:
             self.original_stream.write(text)
             self.original_stream.flush()
 
-        # Store non-empty messages to database
-        if text.strip():
+        # Filter out tqdm progress bar noise
+        if self._should_log_message(text.strip()):
             self._store_log(text)
+
+    def _should_log_message(self, message: str) -> bool:
+        """Determine if a message should be logged to the database."""
+        if not message:
+            return False
+
+        # Filter out tqdm progress bar updates and related noise
+        tqdm_indicators = [
+            "%|", "█", "▌", "▍", "▎", "▏", "▊", "▋",  # Progress bar characters
+            "it/s", "s/it", "batch/s", "s/batch",      # Rate indicators
+            "\r", "\x1b[",                             # Carriage returns and ANSI codes
+        ]
+
+        # Check if message contains tqdm indicators
+        for indicator in tqdm_indicators:
+            if indicator in message:
+                return False
+
+        # Filter out lines that are mostly whitespace or progress-like
+        if len(message.strip()) < 3:
+            return False
+
+        # Filter out lines that look like tqdm postfix updates (key: value pairs)
+        if ":" in message and len(message.split(":")) >= 2:
+            parts = message.split(":")
+            if len(parts) == 2 and all(len(p.strip()) < 20 for p in parts):
+                # Looks like "loss: 0.1234" - likely tqdm postfix
+                return False
+
+        return True
 
     def flush(self):
         """Flush the original stream."""
@@ -137,7 +219,6 @@ class LogCapture:
             # Broadcast log event via WebSocket if available
             if ws_manager:
                 try:
-                    import asyncio
                     log_event = {
                         "type": "run.log",
                         "run_id": self.run_id,
@@ -146,8 +227,8 @@ class LogCapture:
                         "source": self.source,
                         "message": message.strip()
                     }
-                    # Schedule the broadcast
-                    asyncio.create_task(ws_manager.broadcast_json(log_event, topic="runs"))
+                    # Schedule the broadcast safely
+                    self._safe_broadcast(log_event)
                 except Exception:
                     # Don't let WebSocket errors break logging
                     pass
@@ -157,3 +238,28 @@ class LogCapture:
             pass
         finally:
             db.close()
+
+    def _safe_broadcast(self, log_event: dict):
+        """Safely broadcast log event to WebSocket clients."""
+        try:
+            import asyncio
+            import threading
+
+            # Check if we're in an async context
+            try:
+                loop = asyncio.get_running_loop()
+                # We're in an async context, schedule the coroutine
+                loop.create_task(ws_manager.broadcast_json(log_event, topic="runs"))
+            except RuntimeError:
+                # No running event loop, run in thread
+                def run_broadcast():
+                    try:
+                        asyncio.run(ws_manager.broadcast_json(log_event, topic="runs"))
+                    except Exception:
+                        pass
+
+                thread = threading.Thread(target=run_broadcast, daemon=True)
+                thread.start()
+        except Exception:
+            # Silently fail to avoid breaking training
+            pass

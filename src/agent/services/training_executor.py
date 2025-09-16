@@ -58,7 +58,7 @@ class TrainingExecutor:
 
             # Execute training
             success = self._run_training(
-                train_config, progress_callback, should_stop_callback
+                train_config, progress_callback, should_stop_callback, log_streamer
             )
 
             # Update run status
@@ -210,6 +210,7 @@ class TrainingExecutor:
         config: TrainConfig,
         progress_callback: Optional[Callable[[TrainingProgress], None]],
         should_stop_callback: Optional[Callable[[], bool]],
+        log_streamer,
     ) -> bool:
         """Execute the actual training process."""
         # Create progress wrapper that matches the expected signature
@@ -227,6 +228,7 @@ class TrainingExecutor:
             config,
             progress_cb=progress_wrapper,
             should_stop=should_stop_callback,
+            log_streamer=log_streamer,
         )
 
         return True
