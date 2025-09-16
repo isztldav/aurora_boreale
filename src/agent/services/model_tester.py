@@ -15,6 +15,7 @@ from transformers import AutoImageProcessor, AutoModelForImageClassification
 from dashboard.db import SessionLocal
 from dashboard import models
 from common.config import TrainConfig
+from common.model import build_model
 
 
 class ModelTester:
@@ -123,7 +124,7 @@ class ModelTester:
             raise ValueError("No class labels found in training config")
 
         # Load checkpoint
-        checkpoint = torch.load(checkpoint_path, map_location=device)
+        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
         model_state = checkpoint["model_state"]
 
         # Recreate model architecture
@@ -134,14 +135,11 @@ class ModelTester:
             id2label = {int(k): v for k, v in id2label.items()}
 
         try:
-            # Load model with HuggingFace
-            model = AutoModelForImageClassification.from_pretrained(
-                model_flavour,
-                num_labels=num_labels,
-                id2label=id2label,
-                label2id=label2id,
-                ignore_mismatched_sizes=True
-            )
+            model = build_model(model_flavour=model_flavour, 
+                                num_labels=num_labels,
+                                id2label=id2label,
+                                label2id=label2id,
+                                load_pretrained=False)
             processor = AutoImageProcessor.from_pretrained(model_flavour)
 
         except Exception as e:

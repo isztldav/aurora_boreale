@@ -5,10 +5,17 @@ const API_HOST = (process.env.NEXT_PUBLIC_API_HOST || '').replace(/\/$/, '')
 const API_BASE = EXPLICIT_BASE || (API_HOST ? `${API_HOST}/api/v1` : '/api/v1')
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {}
+
+  // Only add Content-Type for non-FormData requests
+  if (!(init?.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json'
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      ...headers,
       ...(init?.headers || {}),
     },
     // Credentials not needed for this MVP; add if auth appears later
