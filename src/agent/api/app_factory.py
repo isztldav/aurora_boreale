@@ -9,7 +9,7 @@ from typing import Optional
 
 from fastapi import FastAPI
 
-from dashboard.db import init_db
+# Database initialization is handled by the dashboard backend only
 
 from ..domain import AgentConfig, AgentStatus
 from ..services import GPUDiscoveryService, AgentManager
@@ -138,8 +138,8 @@ class AgentAppFactory:
         agent_manager: AgentManager
     ) -> tuple[asyncio.Task, asyncio.Task]:
         """Execute startup sequence and return background tasks."""
-        # Initialize database
-        init_db()
+        # Note: Database initialization is handled by the dashboard backend
+        # Agent only uses the database connection, does not initialize schema
 
         # Register agent and GPU
         agent_uuid = uuid.UUID(agent_id)

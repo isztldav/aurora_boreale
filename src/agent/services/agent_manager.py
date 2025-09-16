@@ -5,7 +5,7 @@ import threading
 import time
 from typing import Optional, Callable
 
-from dashboard.db import init_db
+# Database initialization is handled by the dashboard backend only
 
 from ..domain import AgentStatus, AgentConfig, TrainingProgress, RunContext
 from ..repositories import RunRepository
@@ -69,7 +69,7 @@ class AgentManager:
 
     async def run_forever(self) -> None:
         """Main agent loop - polls for jobs and executes training runs."""
-        init_db()
+        # Note: Database initialization is handled by the dashboard backend
         print(f"[agent_manager] Started for agent_id={self.config.agent_id}, polling every {self.config.poll_interval:.1f}s")
 
         while not self._stop_event.is_set():

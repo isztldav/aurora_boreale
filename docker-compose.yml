@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: dashboard
       POSTGRES_DB: dashboard
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdataprod:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
@@ -73,6 +73,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      web:
+        condition: service_started  # Ensure web (dashboard) starts first to initialize DB schema
     # Request all GPUs from the host (Compose v2+)
     deploy:
       resources:
@@ -118,4 +120,4 @@ networks:
     driver: bridge
 
 volumes:
-  pgdata:
+  pgdataprod:

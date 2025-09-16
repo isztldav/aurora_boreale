@@ -37,6 +37,12 @@ This is a unified training platform v2 for reproducible, scriptable ML experimen
 - **Training Loop**: `src/common/train_eval.py` - Mixed precision training with comprehensive metrics
 - **Checkpointing**: `src/common/checkpoint.py` - Best model and optional per-epoch checkpointing
 
+### Database Architecture
+- **Database Initialization**: Only the dashboard backend (`src/dashboard/app.py`) initializes the database schema via `init_db()`
+- **Agent Connection**: Training agents connect to the database but do not initialize schema - they only use existing tables
+- **Service Dependencies**: In Docker Compose, agents depend on both database health and dashboard startup to ensure proper initialization order
+- **Schema Management**: All SQLAlchemy models are defined in `src/dashboard/models.py` and shared across services
+
 ## Development Commands
 
 ### Backend Development
