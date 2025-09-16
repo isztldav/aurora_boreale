@@ -17,15 +17,16 @@ This is a unified ML training platform consisting of:
 app.py                 # Main FastAPI app with CORS, routers, TensorBoard mounting
 ├── routers/           # Modular API endpoints
 │   ├── projects.py    # Project CRUD (top-level container)
-│   ├── runs.py        # Training run management + GPU allocation
+│   ├── runs.py        # Training run management + GPU allocation + LIVE LOGS
 │   ├── configs.py     # Training configuration management
 │   ├── agents.py      # Agent registration and heartbeat
 │   ├── datasets.py    # Dataset browsing and management
 │   ├── registry_models.py  # HuggingFace model registry
 │   ├── augmentations.py    # Data augmentation presets
-│   ├── ws.py          # WebSocket for real-time updates
+│   ├── model_testing.py    # Model inference and testing API
+│   ├── ws.py          # WebSocket for real-time updates + LOG STREAMING
 │   └── tensorboard.py # Embedded TensorBoard integration
-├── models.py          # SQLAlchemy database models (PostgreSQL)
+├── models.py          # SQLAlchemy database models (PostgreSQL + RunLog)
 ├── schemas.py         # Pydantic request/response schemas
 ├── db.py              # Database session management
 └── utils.py           # Helper utilities
@@ -58,19 +59,22 @@ api/app_factory.py    # Dependency injection setup
 domain/models.py      # Core agent domain objects
 services/
 ├── agent_manager.py      # Main agent lifecycle
-├── training_executor.py  # Training execution service
-└── gpu_discovery.py      # GPU hardware discovery
+├── training_executor.py  # Training execution service + LOG CAPTURE
+├── gpu_discovery.py      # GPU hardware discovery
+├── log_streamer.py       # Real-time log capture and streaming to web UI
+└── model_tester.py       # Model inference and checkpoint testing with drag-and-drop
 repositories/         # Database interaction layer
 ```
 
 ### Core Training System - `src/common/`
 ```
-config.py            # TrainConfig dataclass (all experiment parameters)
-runner.py            # Complete experiment orchestration
-train_eval.py        # Training loop + evaluation with metrics
+config.py            # TrainConfig dataclass (all experiment parameters + PERSISTENT LABELS)
+runner.py            # Complete experiment orchestration + label population
+train_eval.py        # Training loop + evaluation with metrics + CUSTOM PROGRESS
 model.py             # HuggingFace model construction + label mapping
 data.py              # ImageFolder datasets + CUDA prefetch
 checkpoint.py        # Best model + per-epoch checkpointing
+progress_tracker.py  # Custom tqdm replacement for log streaming with rate limiting
 
 registry.py          # Centralized configuration registry
 losses.py            # Registry-based loss functions
@@ -91,12 +95,15 @@ Project (top-level container)
 └── Augmentation (project-scoped augmentations)
 
 TrainConfigModel → Run (training execution) → Job (queued work)
+                           ↓
+                      RunLog (real-time logs)
 Agent ← GPU (1:1 allocation tracking)
 ```
 
 **Key Relationships:**
 - Projects contain all resources (cascade deletion)
 - Runs are created from configs and assigned to agents
+- RunLogs capture real-time training output with WebSocket streaming
 - GPUs track allocation state for scheduling
 - User model exists but auth not implemented
 
@@ -107,13 +114,15 @@ Agent ← GPU (1:1 allocation tracking)
 ├── projects/          # Project CRUD operations
 ├── groups/            # Experiment grouping
 ├── configs/           # Training configuration management
-├── runs/              # Training run control + monitoring
+├── runs/              # Training run control + monitoring + LIVE LOGS
 ├── agents/            # Agent registration + heartbeat
 ├── datasets/          # Dataset management + browsing
 ├── models/            # HuggingFace model registry
 ├── augmentations/     # Data augmentation presets
 ├── registry/          # Configuration registries (losses, optimizers, etc.)
-└── ws                 # WebSocket for real-time training updates
+├── model-testing/     # Model inference with drag-and-drop image upload
+├── tensorboard/       # TensorBoard lifecycle management
+└── ws                 # WebSocket for real-time training updates + log streaming
 
 /tb/                   # Embedded TensorBoard (WSGI mount)
 ```
@@ -198,13 +207,14 @@ def build_my_loss(config: dict) -> nn.Module:
 - **Compound Components**: shadcn/ui component composition
 - **Server State**: TanStack Query for caching and synchronization
 - **Form Handling**: Controlled components with validation
-- **Error Boundaries**: Graceful error handling with toast notifications
-- **WebSocket Integration**: Real-time training updates
+- **Error Boundaries**: Graceful error handling with enhanced error parsing
+- **WebSocket Integration**: Real-time training updates and log streaming
+- **Drag-and-Drop**: File upload with visual feedback (model testing)
 
 ### State Management
 - **Frontend UI State**: Zustand for simple UI state (sidebar visibility)
 - **Server State**: TanStack Query for API data with caching/invalidation
-- **Real-time Updates**: WebSocket connection for training metrics
+- **Real-time Updates**: WebSocket connection for training metrics and live logs
 
 ## 🔧 Key Configuration Files
 
@@ -258,11 +268,12 @@ cd web_ui && npm run typecheck
 ### Adding New Features - Checklist
 
 **For Training Features:**
-- [ ] Update `TrainConfig` in `src/common/config.py`
+- [ ] Update `TrainConfig` in `src/common/config.py` (includes label persistence)
 - [ ] Add to appropriate registry in `src/common/registry.py`
 - [ ] Update Pydantic schemas in `src/dashboard/schemas.py`
 - [ ] Create/update API endpoints
 - [ ] Add frontend components for configuration
+- [ ] Consider progress tracking and log streaming integration
 - [ ] Test with Docker development environment
 
 **For UI Features:**
@@ -271,6 +282,8 @@ cd web_ui && npm run typecheck
 - [ ] Integrate with TanStack Query for data fetching
 - [ ] Add navigation links in `shell.tsx`
 - [ ] Follow shadcn/ui patterns for consistency
+- [ ] Implement proper error handling with user-friendly messages
+- [ ] Consider WebSocket integration for real-time updates
 
 **For Database Changes:**
 - [ ] Add models to `src/dashboard/models.py`
@@ -299,13 +312,16 @@ cd web_ui && npm run typecheck
 | New API Endpoint | `routers/`, `app.py`, frontend API client |
 | New UI Page | `web_ui/app/`, `components/`, `shell.tsx` navigation |
 | Database Schema | `models.py`, migration script, `schemas.py`, API endpoints |
-| Training Pipeline | `runner.py`, `train_eval.py`, registry files |
+| Training Pipeline | `runner.py`, `train_eval.py`, `progress_tracker.py`, registry files |
 | Agent Capability | `agent/services/`, `agent/domain/`, API routes |
+| Log Streaming | `log_streamer.py`, `routers/runs.py`, WebSocket client |
+| Model Testing | `model_tester.py`, `routers/model_testing.py`, frontend dialog |
 
 ## 🐛 Error Handling & Testing
 
 **Current State**: No formal test suite
-**Patterns**: HTTPException (backend), Error boundaries + toast (frontend)
+**Patterns**: HTTPException (backend), Enhanced error parsing + user-friendly UI (frontend)
+**Error Handling**: Comprehensive error parsing in API client, graceful model testing failures
 **Recommended**: pytest (backend), Jest + Testing Library (frontend)
 
 ## 🔐 Authentication
@@ -313,7 +329,31 @@ cd web_ui && npm run typecheck
 **Current State**: User model exists, no active authentication
 **Extension Point**: Add FastAPI middleware + frontend auth context providers
 
+## 🚀 Recent Feature Additions
+
+### Label Persistence System
+- **TrainConfig Enhancement**: Added `class_labels`, `label2id`, `id2label` fields for persistent label storage
+- **Training Pipeline**: Modified `runner.py` to populate labels before saving configurations
+- **Purpose**: Enables model testing and inference by preserving dataset label mappings with checkpoints
+
+### Real-time Log Streaming
+- **RunLog Model**: New database model for storing timestamped training logs
+- **LogStreamer Service**: Captures stdout/stderr with WebSocket broadcasting to web UI
+- **Progress Tracking**: Custom progress tracker with tqdm filtering and rate limiting
+- **WebSocket Integration**: Live log updates in training dashboard with proper async handling
+
+### Model Testing Feature
+- **ModelTester Service**: Drag-and-drop image testing against trained checkpoints
+- **API Endpoints**: Complete model testing API with file upload and inference
+- **Frontend Integration**: Modal dialog with drag-and-drop, prediction display, and error handling
+- **Checkpoint Loading**: Automatic model reconstruction from saved configs and weights
+
+### Enhanced Error Handling
+- **API Client**: Improved error parsing for FastAPI validation errors and detail messages
+- **User Experience**: User-friendly error messages instead of raw JSON responses
+- **Visual Feedback**: Better error states in model testing and form validation
+
 ---
 
-**Last Updated**: Generated from codebase analysis
+**Last Updated**: Comprehensive update including all recent feature implementations
 **Usage**: Provide this cache to agents for quick project understanding and feature extension guidance
