@@ -23,20 +23,36 @@ A small, focused codebase for running reproducible, scriptable, and easily exten
 
 
 ## Repository Layout
-- main.py — Entry point that iterates over experiment configs and runs them sequentially.
-- training_configurations/examples.py — Where you define experiments (dataset roots, models, hyperparameters).
-- utils/config.py — TrainConfig dataclass and JSON serialization helper.
-- utils/experiments.py — Run name helpers (sanitization, base name, unique suffixing).
-- utils/runner.py — Orchestrates the full lifecycle: data, model, optimizer or scheduler, train and eval, logging, checkpoints.
-- utils/data.py — ImageFolder-based datasets and DataLoaders, class maps, and a simple collate.
-- utils/transforms.py — CPU transforms derived from each models HF image processor (size and normalization stats).
-- utils/gpu_transforms.py — Optional GPU batch augmentations (Kornia) that preserve size.
-- utils/model.py — HF model construction (pretrained or from config), optional backbone freezing.
-- utils/train_eval.py — Training step, evaluation loop, metrics, and visuals.
-- utils/checkpoint.py — Best or per-epoch checkpoint saving and metadata.
-- utils/tb.py — TensorBoard writer factory and table logging (Markdown confusion matrix).
-- utils/cuda_helper.py — GPU prefetch DataLoader wrapper with async host-to-device copies.
-- utils/seed.py — Reproducibility helpers and device selection.
+
+### Core Architecture
+- **src/dashboard/** — FastAPI backend with REST API and database management
+- **src/agent/** — Training agent service with clean architecture (domain, services, repositories)
+- **src/core/** — Pure ML training logic and utilities (no external dependencies)
+- **src/shared/** — Shared infrastructure (database models, schemas, types)
+- **web_ui/** — Next.js frontend with modern React dashboard
+- **main.py** — Standalone training entry point
+
+### Core ML Engine (src/core/)
+- **config.py** — TrainConfig dataclass with persistent label mapping
+- **training/runner.py** — Orchestrates the full training lifecycle
+- **training/train_eval.py** — Training loop, evaluation, and metrics
+- **training/model.py** — HF model construction with proper label mapping
+- **data/datasets.py** — ImageFolder datasets with CUDA prefetch
+- **data/transforms.py** — CPU transforms from HF image processors
+- **data/gpu_transforms.py** — GPU batch augmentations (Kornia)
+- **utils/checkpoint.py** — Best and per-epoch checkpointing
+- **utils/registry.py** — Centralized configuration registry
+- **utils/losses.py** — Loss function registry
+- **utils/optimizers.py** — Optimizer registry
+- **utils/progress_tracker.py** — Custom progress tracking for log streaming
+- **utils/tb.py** — TensorBoard utilities
+- **utils/seed.py** — Reproducibility helpers
+
+### Shared Infrastructure (src/shared/)
+- **database/models.py** — All SQLAlchemy database models
+- **database/connection.py** — Database session management and initialization
+- **database/schemas.py** — Pydantic request/response schemas
+- **types/** — Shared type definitions
 
 
 ## Data Expectations
@@ -56,7 +72,7 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 pip install transformers torchmetrics tensorboard matplotlib tqdm kornia
 ~~~
 
-2) Point dataset roots in training_configurations/examples.py to your local folders.
+2) Point dataset roots in training_configurations/examples.py to your local folders (for standalone mode) or use the web dashboard for full platform features.
 
 3) Run all configured experiments:
 
@@ -67,11 +83,11 @@ python main.py
 4) View logs and figures in TensorBoard:
 
 ~~~bash
-tensorboard --logdir experiments/logs
+tensorboard --logdir runs
 ~~~
 
 ### Modern Dashboard UI (Next.js + TypeScript)
-- The UI is now a standalone Next.js 14 app with TypeScript, Tailwind, shadcn-style components, Zustand, TanStack Query, Recharts, and a WebSocket client for live updates.
+- The UI is now a standalone Next.js 15 app with TypeScript, Tailwind, shadcn/ui components, Zustand, TanStack Query, Recharts, and a WebSocket client for live updates.
 - The FastAPI app continues to provide the backend API under `/api/v1` and now exposes a WebSocket endpoint at `/api/v1/ws`.
 
 Run the UI locally (requires Node 18+):
@@ -100,7 +116,7 @@ Legacy server-rendered pages have been removed; use the Next.js UI exclusively.
 Endpoints (selection):
 - `GET/POST /api/v1/projects` — list/create projects
 - `GET /api/v1/configs/project/{project_id}` — list configs for project
-- `POST /api/v1/configs` — create a config (payload mirrors utils.config.TrainConfig fields)
+- `POST /api/v1/configs` — create a config (payload mirrors src.core.config.TrainConfig fields)
 - `POST /api/v1/runs/from-config/{config_id}` — queue a run (creates run + job rows)
 - `GET /api/v1/agents` — list agents; `GET /api/v1/agents/{agent_id}/gpus` — list GPUs for agent
   - Note: Agents and GPUs are auto-registered by the agent process; manual creation is disabled.
@@ -161,45 +177,56 @@ Shared memory (DataLoader workers)
 - The agent service sets `shm_size: 2gb` in `docker-compose.yml`. Increase if needed, or set `num_workers=0` in your TrainConfig to disable multiprocessing.
 
 Notes:
-- No scheduler, Docker, or real log/metrics streaming is implemented yet per requirements_v_1.md scope. The API records queued jobs and run states for now.
+- Real-time log streaming and metrics are now implemented with WebSocket integration.
+- Docker development environment with hot reload is fully functional.
+- TensorBoard integration is embedded in the FastAPI backend.
 
 
 ## How Experiments Are Structured
+
+### Standalone Mode
 - Declare a list named training_configurations in training_configurations/examples.py.
 - Each item is a TrainConfig with all the knobs for a single run.
 - main.py loops over that list. For each config it:
   - Builds a base run name: model_flavour__loss__pretrained-or-scratch plus an optional suffix.
   - Ensures uniqueness under the TensorBoard root by adding -v1, -v2, and so on if needed.
-  - Calls utils.runner.run_experiment(cfg) and prints the resolved TensorBoard log directory.
+  - Calls src.core.training.runner.run_experiment(cfg) and prints the resolved TensorBoard log directory.
+
+### Dashboard Mode
+- Create projects and experiment groups through the web UI
+- Define TrainConfig entries via the dashboard interface
+- Queue training runs that execute on GPU agents
+- Monitor progress with real-time log streaming and metrics
+- Access embedded TensorBoard instances through the UI
 
 Outputs per run
-- Logs: experiments/logs/DATASET/RUN_NAME/
-- Checkpoints: experiments/checkpoints/DATASET/RUN_NAME/
+- Logs: runs/DATASET/RUN_NAME/ (configurable via tb_root)
+- Checkpoints: checkpoints/DATASET/RUN_NAME/ (configurable via ckpt_dir)
   - Best checkpoint: best.pt overwrites on improvement of the monitored metric.
   - Per-epoch checkpoints: epoch_XXX.pt if save_per_epoch_checkpoint is True.
   - Metadata: _best_meta.json records best value, epoch, monitor, and mode to make best tracking robust across restarts.
 
 Run naming and versioning
-- Defined in utils/experiments.py; sanitized to be filesystem friendly.
+- Defined in src/core/utils/experiments.py; sanitized to be filesystem friendly.
 - If a run directory already exists, a -vK suffix is appended to avoid collisions.
 
 
 ## Training Pipeline Overview
-- Reproducibility: utils/seed.set_seed(cfg.seed) sets Python, NumPy, and Torch seeds per run.
-- Device: utils/seed.get_device() selects CUDA if available; cuDNN benchmark enabled for speed.
-- Transforms: utils/transforms.build_transforms looks up the HF processor for model_flavour and derives size and normalization.
-- Data: utils/data.build_dataloaders builds ImageFolder datasets and DataLoaders with pinned memory; wrapped with CUDAPrefetchLoader for async GPU prefetch.
-- Model: utils/model.build_model creates an AutoModelForImageClassification with correct label maps. Optional freeze_backbone trains a linear or classifier head only.
-- Optimizer: Adam or AdamW. Parameters are split into decay or no-decay groups (no decay for bias or LayerNorm or 1D) for stability. Learning rate from config.
+- Reproducibility: src.core.utils.seed.set_seed(cfg.seed) sets Python, NumPy, and Torch seeds per run.
+- Device: src.core.utils.seed.get_device() selects CUDA if available; cuDNN benchmark enabled for speed.
+- Transforms: src.core.data.transforms.build_transforms looks up the HF processor for model_flavour and derives size and normalization.
+- Data: src.core.data.datasets.build_dataloaders builds ImageFolder datasets and DataLoaders with pinned memory; wrapped with CUDAPrefetchLoader for async GPU prefetch.
+- Model: src.core.training.model.build_model creates an AutoModelForImageClassification with correct label maps. Optional freeze_backbone trains a linear or classifier head only.
+- Optimizer: Registry-based optimizer system (src.core.utils.optimizers) with Adam, AdamW, and more. Parameters are split into decay/no-decay groups for stability.
 - Schedule: Cosine schedule with warmup (from Transformers) sized to effective steps, respecting gradient accumulation.
 - Precision and stability: Mixed precision with torch.autocast using cfg.autocast_dtype (default bfloat16), gradient clipping via cfg.max_grad_norm, gradient accumulation via cfg.grad_accum_steps.
-- Loss: Cross-entropy (nn.CrossEntropyLoss).
-- Logging: Per-step loss or acc or lr; per-epoch train loss or acc and full validation suite. Confusion matrix and ROC micro are saved as PNGs and logged to TensorBoard.
-- Checkpoints: Best and optional per-epoch checkpointing keyed to cfg.monitor_metric with cfg.monitor_mode in utils.checkpoint.save_model_checkpoints.
+- Loss: Registry-based loss system (src.core.utils.losses) with cross-entropy and other options.
+- Logging: Per-step loss/acc/lr; per-epoch train loss/acc and full validation suite. Confusion matrix and ROC curves saved as PNGs and logged to TensorBoard. Real-time log streaming to web UI.
+- Checkpoints: Best and optional per-epoch checkpointing keyed to cfg.monitor_metric with cfg.monitor_mode in src.core.utils.checkpoint.save_model_checkpoints.
 
 
 ## Metrics
-Computed in utils/train_eval.evaluate using TorchMetrics:
+Computed in src.core.training.train_eval.evaluate using TorchMetrics:
 - Overall: val_loss, val_acc@1, val_map (macro mAP), val_f1_macro, val_auroc_macro.
 - Top-K: val_acc@K for each K in cfg.eval_topk.
 - Agreement and sensitivity: val_cohenkappa, val_recall_micro, val_recall_macro.
@@ -207,7 +234,7 @@ Computed in utils/train_eval.evaluate using TorchMetrics:
 
 
 ## Configuration (TrainConfig)
-Common fields (see utils/config.py for full list and defaults):
+Common fields (see src/core/config.py for full list and defaults):
 - Data: root, batch_size, num_workers, prefetch_factor, persistent_workers, max_datapoints_per_class.
 - Model: model_flavour (HF checkpoint id or path), load_pretrained, freeze_backbone.
 - Optimization: optimizer (adam or adamw), lr, weight_decay, max_grad_norm, warmup_ratio, grad_accum_steps, epochs, autocast_dtype, seed.
@@ -217,23 +244,33 @@ Example: configs in training_configurations/examples.py generate comparable runs
 
 
 ## Extending The Platform
+
+### Standalone Mode Extensions
 - New experiments: add or modify TrainConfig entries in training_configurations/examples.py.
 - Custom datasets or tasks:
-  - Replace or extend utils/data.build_dataloaders to construct your DataLoaders.
-  - Ensure the batch structure and the training or eval loops agree on shapes and targets.
+  - Replace or extend src.core.data.datasets.build_dataloaders to construct your DataLoaders.
+  - Ensure the batch structure and the training/eval loops agree on shapes and targets.
 - Custom models:
-  - Extend utils/model.build_model to build other HF model types or your own architectures.
-  - If model outputs differ from the .logits convention, adjust utils/train_eval.py accordingly.
-- Custom loss or metrics:
-  - Swap the loss function in utils/runner.run_experiment.
-  - Add metrics or plots inside utils/train_eval.evaluate.
+  - Add to the model registry in src.core.utils.registry.py.
+  - Extend src.core.training.model.build_model for new architectures.
+  - If model outputs differ from the .logits convention, adjust src.core.training.train_eval.py accordingly.
+
+### Registry System Extensions
+- Custom losses: Add to src.core.utils.losses.py using the @register_loss decorator.
+- Custom optimizers: Add to src.core.utils.optimizers.py using the @register_optimizer decorator.
+- Custom metrics: Extend src.core.training.train_eval.evaluate function.
+
+### Platform Features
 - Augmentations:
-  - CPU transforms: edit utils/transforms.py.
-  - GPU batch transforms: implement in utils/gpu_transforms.py and enable in utils/runner.py.
-- Resuming training:
-  - Checkpoints contain model or optimizer or scheduler states; loading logic is not wired yet. To add resume, read a checkpoint in run_experiment before training starts and restore states.
-- Distributed or multi GPU:
-  - Not currently implemented. You can introduce DDP in utils/runner.py and adapt DataLoaders or samplers accordingly.
+  - CPU transforms: edit src.core.data.transforms.py.
+  - GPU batch transforms: implement in src.core.data.gpu_transforms.py.
+- Web UI: Add components in web_ui/components/ and pages in web_ui/app/.
+- API endpoints: Add routers in src/dashboard/routers/ and update src/dashboard/app.py.
+- Agent capabilities: Extend src/agent/services/ following clean architecture patterns.
+
+### Advanced Features
+- Resuming training: Checkpoints contain model/optimizer/scheduler states; loading logic can be added to run_experiment.
+- Distributed or multi-GPU: Can be implemented in src.core.training.runner.py with DDP support.
 
 
 ## Known Limitations

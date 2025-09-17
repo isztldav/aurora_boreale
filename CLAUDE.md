@@ -9,7 +9,8 @@ This is a unified training platform v2 for reproducible, scriptable ML experimen
 1. **FastAPI Backend** (`src/dashboard/`) - REST API and database management
 2. **Next.js Frontend** (`web_ui/`) - Modern React-based dashboard UI
 3. **Training Agent** (`src/agent/`) - GPU-accelerated training execution
-4. **Common Libraries** (`src/common/`) - Shared training utilities and configurations
+4. **Core ML Engine** (`src/core/`) - Pure ML training logic and utilities
+5. **Shared Infrastructure** (`src/shared/`) - Database models and common schemas
 
 ## Architecture
 
@@ -28,20 +29,28 @@ This is a unified training platform v2 for reproducible, scriptable ML experimen
 ### Training Agent
 - **Server**: `src/agent/server.py` - FastAPI agent that polls database for training jobs
 - **GPU Management**: Single agent per GPU with device isolation
-- **Training Pipeline**: Orchestrated by `src/common/runner.py`
+- **Training Pipeline**: Orchestrated by `src/core/training/runner.py`
+- **Clean Architecture**: Domain models, services, and repositories for maintainability
 
-### Core Training System
-- **Configuration**: `src/common/config.py` - `TrainConfig` dataclass defines all experiment parameters
-- **Data Pipeline**: `src/common/data.py` - ImageFolder datasets with transforms and CUDA prefetch
-- **Models**: `src/common/model.py` - HF AutoModelForImageClassification with proper label mapping
-- **Training Loop**: `src/common/train_eval.py` - Mixed precision training with comprehensive metrics
-- **Checkpointing**: `src/common/checkpoint.py` - Best model and optional per-epoch checkpointing
+### Core ML Engine
+- **Configuration**: `src/core/config.py` - `TrainConfig` dataclass defines all experiment parameters
+- **Data Pipeline**: `src/core/data/datasets.py` - ImageFolder datasets with transforms and CUDA prefetch
+- **Models**: `src/core/training/model.py` - HF AutoModelForImageClassification with proper label mapping
+- **Training Loop**: `src/core/training/train_eval.py` - Mixed precision training with comprehensive metrics
+- **Checkpointing**: `src/core/utils/checkpoint.py` - Best model and optional per-epoch checkpointing
+- **Utilities**: `src/core/utils/` - Registry system, losses, optimizers, progress tracking
+
+### Shared Infrastructure
+- **Database Models**: `src/shared/database/models.py` - All SQLAlchemy models centralized
+- **Database Connection**: `src/shared/database/connection.py` - Session management and initialization
+- **Schemas**: `src/shared/database/schemas.py` - Pydantic request/response models
+- **Types**: `src/shared/types/` - Shared type definitions
 
 ### Database Architecture
 - **Database Initialization**: Only the dashboard backend (`src/dashboard/app.py`) initializes the database schema via `init_db()`
 - **Agent Connection**: Training agents connect to the database but do not initialize schema - they only use existing tables
 - **Service Dependencies**: In Docker Compose, agents depend on both database health and dashboard startup to ensure proper initialization order
-- **Schema Management**: All SQLAlchemy models are defined in `src/dashboard/models.py` and shared across services
+- **Schema Management**: All SQLAlchemy models are defined in `src/shared/database/models.py` and shared across services
 
 ## Development Commands
 
@@ -126,18 +135,37 @@ ROOT/
 src/
 ├── dashboard/          # FastAPI backend
 │   ├── app.py         # Main FastAPI app
-│   ├── models.py      # SQLAlchemy database models
-│   ├── db.py          # Database session management
+│   ├── tensorboard.py # TensorBoard integration
+│   ├── utils.py       # Helper utilities
 │   └── routers/       # API route handlers
 ├── agent/             # Training agent service
-│   └── server.py      # Agent FastAPI server
-└── common/            # Shared training utilities
-    ├── config.py      # TrainConfig dataclass
-    ├── runner.py      # Training orchestration
-    ├── train_eval.py  # Training loop and evaluation
-    ├── model.py       # Model construction
-    ├── data.py        # Dataset and DataLoader utilities
-    └── checkpoint.py  # Checkpointing utilities
+│   ├── server.py      # Agent FastAPI server
+│   ├── api/           # Clean architecture - app factory
+│   ├── domain/        # Domain models
+│   ├── services/      # Business logic services
+│   └── repositories/  # Data access layer
+├── core/              # Core ML engine (pure ML logic)
+│   ├── config.py      # TrainConfig dataclass
+│   ├── training/      # Training pipeline components
+│   │   ├── runner.py  # Training orchestration
+│   │   ├── train_eval.py # Training loop and evaluation
+│   │   └── model.py   # Model construction
+│   ├── data/          # Data handling and transformations
+│   │   ├── datasets.py    # ImageFolder datasets
+│   │   ├── transforms.py  # CPU augmentations
+│   │   └── gpu_transforms.py # GPU augmentations
+│   └── utils/         # Pure utilities with no external dependencies
+│       ├── checkpoint.py  # Checkpointing utilities
+│       ├── registry.py    # Configuration registry
+│       ├── losses.py      # Loss functions
+│       ├── optimizers.py  # Optimizers
+│       └── progress_tracker.py # Progress tracking
+└── shared/            # Shared infrastructure
+    ├── database/      # Database models and connection
+    │   ├── models.py  # All SQLAlchemy models
+    │   ├── connection.py # Database session management
+    │   └── schemas.py # Pydantic schemas
+    └── types/         # Shared type definitions
 
 web_ui/               # Next.js frontend
 ├── app/             # App router pages
@@ -165,7 +193,7 @@ mypy src/
 ```
 
 ### Database Migrations
-Database schema is managed through SQLAlchemy models. Migrations are not currently automated - modify `src/dashboard/models.py` and restart services to recreate tables.
+Database schema is managed through SQLAlchemy models. Migrations are not currently automated - modify `src/shared/database/models.py` and restart services to recreate tables.
 
 ### Adding New Models or Datasets
 1. Update dataset registries through the dashboard UI
