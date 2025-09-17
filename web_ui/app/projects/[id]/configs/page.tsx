@@ -25,6 +25,7 @@ export default function ProjectConfigsPage() {
   const searchParams = useSearchParams()
   const projectId = params.id
   const editConfigId = searchParams.get('edit')
+  const cloneConfigId = searchParams.get('clone')
   const qc = useQueryClient()
   const { data, isLoading, error } = useQuery({ queryKey: ['configs', { projectId }], queryFn: () => apiEx.configs.list(projectId) })
   const { data: groups } = useQuery({ queryKey: ['groups', { projectId }], queryFn: () => api.groups.list(projectId) })
@@ -72,6 +73,13 @@ export default function ProjectConfigsPage() {
                           </Button>
                           <Button
                             size="sm"
+                            variant="outline"
+                            onClick={() => window.open(`/projects/${projectId}/configs?clone=${c.id}`, '_self')}
+                          >
+                            Clone
+                          </Button>
+                          <Button
+                            size="sm"
                             variant="destructive"
                             onClick={() => setDeleteConfigId(c.id)}
                           >
@@ -92,6 +100,7 @@ export default function ProjectConfigsPage() {
         <ConfigForm
           projectId={projectId}
           editConfigId={editConfigId}
+          cloneConfigId={cloneConfigId}
           groups={groups || []}
           models={models || []}
           datasets={datasets || []}
@@ -109,12 +118,19 @@ export default function ProjectConfigsPage() {
   )
 }
 
-function ConfigForm({ projectId, editConfigId, groups, models, datasets, onCreated }: { projectId: string; editConfigId?: string | null; groups: { id: string; name: string }[]; models: { label: string; hf_checkpoint_id: string }[]; datasets: { id: string; name: string; root_path: string }[]; onCreated: () => void }) {
+function ConfigForm({ projectId, editConfigId, cloneConfigId, groups, models, datasets, onCreated }: { projectId: string; editConfigId?: string | null; cloneConfigId?: string | null; groups: { id: string; name: string }[]; models: { label: string; hf_checkpoint_id: string }[]; datasets: { id: string; name: string; root_path: string }[]; onCreated: () => void }) {
   // Load config for editing
   const { data: editConfig } = useQuery({
     queryKey: ['config', { id: editConfigId }],
     queryFn: () => apiEx.configs.get(editConfigId!),
     enabled: !!editConfigId,
+  })
+
+  // Load config for cloning
+  const { data: cloneConfig } = useQuery({
+    queryKey: ['config', { id: cloneConfigId }],
+    queryFn: () => apiEx.configs.get(cloneConfigId!),
+    enabled: !!cloneConfigId,
   })
 
   // Basic Configuration
@@ -175,19 +191,22 @@ function ConfigForm({ projectId, editConfigId, groups, models, datasets, onCreat
 
   // Initialize root when datasets are loaded and no dataset is selected
   useEffect(() => {
-    if (datasets && datasets.length > 0 && !datasetId && !root && !editConfig) {
+    if (datasets && datasets.length > 0 && !datasetId && !root && !editConfig && !cloneConfig) {
       const firstDataset = datasets[0]
       setDatasetId(firstDataset.id)
       setRoot(firstDataset.root_path)
     }
-  }, [datasets, datasetId, root, editConfig])
+  }, [datasets, datasetId, root, editConfig, cloneConfig])
 
-  // Populate form when editing
+  // Populate form when editing or cloning
   useEffect(() => {
-    if (editConfig) {
-      const cfg = editConfig.config_json
-      setName(editConfig.name)
-      setGroupId(editConfig.group_id)
+    const sourceConfig = editConfig || cloneConfig
+    if (sourceConfig) {
+      const cfg = sourceConfig.config_json
+
+      setName(sourceConfig.name)
+
+      setGroupId(sourceConfig.group_id)
 
       // Dataset
       setRoot(cfg.root || '')
@@ -248,7 +267,7 @@ function ConfigForm({ projectId, editConfigId, groups, models, datasets, onCreat
       setModelSuffix(cfg.model_suffix || '')
       setSavePerEpoch(cfg.save_per_epoch_checkpoint || false)
     }
-  }, [editConfig, datasets])
+  }, [editConfig, cloneConfig, datasets])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -341,8 +360,12 @@ function ConfigForm({ projectId, editConfigId, groups, models, datasets, onCreat
         toast.success('Config updated successfully')
         window.location.href = `/projects/${projectId}/configs`
       } else {
+        // For both new configs and clones, create a new config
         await apiEx.configs.create({ project_id: projectId, name, group_id: groupId, config_json: cfg })
-        toast.success('Config created successfully')
+        toast.success(cloneConfigId ? 'Config cloned successfully' : 'Config created successfully')
+        if (cloneConfigId) {
+          window.location.href = `/projects/${projectId}/configs`
+        }
       }
       onCreated()
     } catch (e: any) {
@@ -353,9 +376,15 @@ function ConfigForm({ projectId, editConfigId, groups, models, datasets, onCreat
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{editConfigId ? 'Edit Training Configuration' : 'New Training Configuration'}</CardTitle>
+        <CardTitle>
+          {editConfigId ? 'Edit Training Configuration' :
+           cloneConfigId ? 'Clone Training Configuration' :
+           'New Training Configuration'}
+        </CardTitle>
         <CardDescription>
-          {editConfigId ? 'Edit the training configuration settings.' : 'Create a new training configuration with organized settings for datasets, models, training parameters, and augmentations.'}
+          {editConfigId ? 'Edit the training configuration settings.' :
+           cloneConfigId ? 'Clone and modify the training configuration. Version will be automatically incremented.' :
+           'Create a new training configuration with organized settings for datasets, models, training parameters, and augmentations.'}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -920,6 +949,19 @@ function ConfigForm({ projectId, editConfigId, groups, models, datasets, onCreat
                 </Button>
                 <Button type="submit">
                   Update Configuration
+                </Button>
+              </>
+            ) : cloneConfigId ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.location.href = `/projects/${projectId}/configs`}
+                >
+                  Cancel Cloning
+                </Button>
+                <Button type="submit">
+                  Clone Configuration
                 </Button>
               </>
             ) : (
