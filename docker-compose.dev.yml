@@ -11,10 +11,17 @@ services:
       --log-level debug"
     environment:
       DASHBOARD_DEBUG: "1"
+      # Development logging configuration
+      LOG_LEVEL: "DEBUG"
+      LOG_DIR: "/app/logs"
 
   agent:
     # Enable code reload using uvicorn factory; pass GPU index via env
     command: bash -lc "uvicorn agent.server:create_app --host 0.0.0.0 --port 7070 --reload --factory"
+    environment:
+      # Development logging configuration
+      LOG_LEVEL: "DEBUG"
+      LOG_DIR: "/app/logs"
 
   ui:
     command: sh -lc "npm install && npm run dev -- -p 3000"

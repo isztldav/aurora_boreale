@@ -9,6 +9,9 @@ from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 from transformers import AutoImageProcessor
 from ..utils.registry import cpu_color_presets, validate_cpu_color_jitter_spec
+from shared.logging.config import get_logger
+
+logger = get_logger("core.transforms")
 
 def _get_target_image_size(processor: AutoImageProcessor) -> int:
     size = getattr(processor, "size", None)
@@ -36,7 +39,10 @@ def _build_color_jitter_from_spec(spec: Optional[Dict[str, Any]]):
     # Validate spec against registry
     is_valid, errors = validate_cpu_color_jitter_spec(spec)
     if not is_valid:
-        print(f"[transforms] Invalid color jitter spec: {errors}")
+        logger.warning(
+            "Invalid color jitter specification",
+            extra={"spec": spec, "errors": errors}
+        )
         return None
 
     p = float(spec.get("p", 0.8)) if isinstance(spec, dict) else 0.8
@@ -61,7 +67,11 @@ def _build_color_jitter_from_spec(spec: Optional[Dict[str, Any]]):
 
     try:
         cj = transforms.ColorJitter(**params)
-    except Exception:
+    except Exception as e:
+        logger.warning(
+            "Failed to create ColorJitter transform with provided parameters",
+            extra={"params": params, "error": str(e)}
+        )
         return None
     return transforms.RandomApply([cj], p=p)
 

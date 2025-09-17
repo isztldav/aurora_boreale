@@ -11,6 +11,7 @@ from fastapi import FastAPI
 
 # Database initialization is handled by the dashboard backend only
 
+from shared.logging.config import setup_logging, configure_uvicorn_logging
 from ..domain import AgentConfig, AgentStatus
 from ..services import GPUDiscoveryService, AgentManager
 from ..repositories import AgentRepository
@@ -34,6 +35,10 @@ class AgentAppFactory:
         Returns:
             Configured FastAPI application
         """
+        # Setup logging first
+        logger = setup_logging("agent")
+        configure_uvicorn_logging()
+
         # Resolve parameters from environment if not provided
         effective_agent_id, gpu_info = AgentAppFactory._resolve_agent_identity(
             agent_id, gpu_index
@@ -51,10 +56,14 @@ class AgentAppFactory:
         # Create repositories
         agent_repository = AgentRepository()
 
-        print(
-            f"[app_factory] Creating agent app: agent_id={effective_agent_id} "
-            f"host={socket.gethostname()} gpu_index={gpu_info.index} "
-            f"gpu_name={gpu_info.name}"
+        logger.info(
+            "Creating agent application",
+            extra={
+                "agent_id": effective_agent_id,
+                "hostname": socket.gethostname(),
+                "gpu_index": gpu_info.index,
+                "gpu_name": gpu_info.name
+            }
         )
 
         @asynccontextmanager
@@ -127,8 +136,13 @@ class AgentAppFactory:
         """Configure CUDA environment for this process."""
         try:
             os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_index)
-        except Exception:
-            pass
+        except Exception as e:
+            from shared.logging.config import get_logger
+            logger = get_logger("agent.app_factory")
+            logger.error(
+                "Failed to configure CUDA environment",
+                extra={"gpu_index": gpu_index, "error": str(e)}
+            )
 
     @staticmethod
     async def _startup_sequence(
@@ -147,12 +161,22 @@ class AgentAppFactory:
 
         agent_name = f"gpu:{gpu_info.uuid or 'idx-'+str(gpu_info.index)}"
         agent = agent_repository.upsert_agent(agent_uuid, agent_name, host, gpu_info)
-        print(f"[app_factory] Registered agent id={agent.id} name={agent.name} host={agent.host}")
+        from shared.logging.config import get_logger
+        logger = get_logger("agent.app_factory")
+        logger.info(
+            "Agent registered successfully",
+            extra={"agent_id": str(agent.id), "agent_name": agent.name, "host": agent.host}
+        )
 
         gpu = agent_repository.upsert_gpu(agent_uuid, gpu_info)
-        print(
-            f"[app_factory] Upserted GPU index={gpu.index} uuid={gpu.uuid} "
-            f"name={gpu.name} mem={gpu.total_mem_mb}MB"
+        logger.info(
+            "GPU resource registered",
+            extra={
+                "gpu_index": gpu.index,
+                "gpu_uuid": gpu.uuid,
+                "gpu_name": gpu.name,
+                "total_mem_mb": gpu.total_mem_mb
+            }
         )
 
         # Start background tasks
@@ -179,8 +203,13 @@ class AgentAppFactory:
                     await task
                 except asyncio.CancelledError:
                     pass
-                except Exception:
-                    pass
+                except Exception as e:
+                    from shared.logging.config import get_logger
+                    logger = get_logger("agent.app_factory")
+                    logger.error(
+                        "Failed to cancel background task during shutdown",
+                        extra={"task_name": task_name, "error": str(e)}
+                    )
 
     @staticmethod
     async def _heartbeat_loop(

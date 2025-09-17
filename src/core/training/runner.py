@@ -29,6 +29,9 @@ from core.utils.tb import create_tb_writer, log_confusion_matrix_table
 from core.data.transforms import build_transforms
 from core.data.gpu_transforms import build_gpu_train_augment
 import core.training.train_eval as train_eval
+from shared.logging.config import get_logger
+
+logger = get_logger("core.runner")
 
 
 def _perform_checkpoint(
@@ -58,11 +61,20 @@ def _perform_checkpoint(
         save_per_epoch_checkpoint=cfg.save_per_epoch_checkpoint,
     )
     if is_best:
-        print(
-            f"[checkpoint] 🏆 New best {cfg.monitor_metric} = {best_val:.6f} at epoch {epoch+1}. Saved to: {best_path}"
+        logger.info(
+            "New best checkpoint saved",
+            extra={
+                "monitor_metric": cfg.monitor_metric,
+                "best_value": best_val,
+                "epoch": epoch + 1,
+                "checkpoint_path": best_path
+            }
         )
     if epoch_path:
-        print(f"[checkpoint] Saved epoch weights to: {epoch_path}")
+        logger.info(
+            "Epoch checkpoint saved",
+            extra={"checkpoint_path": epoch_path, "epoch": epoch + 1}
+        )
     return best_val, is_best
 
 
@@ -237,8 +249,11 @@ def run_experiment(
                 epoch_dur = time.time() - _epoch_start
                 try:
                     progress_cb(epoch, cfg.epochs, epoch_dur, tb_log_dir)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(
+                        "Progress callback failed",
+                        extra={"epoch": epoch, "error": str(e)}
+                    )
             if should_stop and should_stop():
                 break
     finally:
@@ -246,11 +261,17 @@ def run_experiment(
         if writer is not None:
             try:
                 writer.flush()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(
+                    "Failed to flush TensorBoard writer",
+                    extra={"error": str(e)}
+                )
             try:
                 writer.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(
+                    "Failed to close TensorBoard writer",
+                    extra={"error": str(e)}
+                )
             
     return tb_log_dir

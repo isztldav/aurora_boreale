@@ -7,6 +7,7 @@ from typing import Optional, Callable
 
 from huggingface_hub import login, logout
 
+from shared.logging.config import get_logger
 from shared.database.connection import SessionLocal
 from shared.database import models
 from core.config import TrainConfig
@@ -20,6 +21,7 @@ class TrainingExecutor:
     """Service responsible for executing training runs."""
 
     def __init__(self):
+        self.logger = get_logger("agent.training_executor")
         self._datasets_root = os.environ.get("DATASETS_DIR", "/app/datasets")
 
     def execute_run(
@@ -117,8 +119,8 @@ class TrainingExecutor:
             if isinstance(autocast_dtype, str) and autocast_dtype.startswith("torch."):
                 dtype_name = autocast_dtype.split(".", 1)[1]
                 cfg_dict["autocast_dtype"] = getattr(torch, dtype_name)
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.warning("Failed to convert autocast dtype", extra={"dtype": cfg_dict.get("autocast_dtype"), "error": str(e)})
 
     def _sanitize_dataset_path(self, path: Optional[str]) -> str:
         """Sanitize and resolve dataset path under the datasets root."""
@@ -158,10 +160,13 @@ class TrainingExecutor:
 
     def _log_training_start(self, config: TrainConfig, run_context: RunContext) -> None:
         """Log training start information and diagnostics."""
-        print(
-            f"[executor] Starting training: run={run_context.run_name} "
-            f"epochs={config.epochs} "
-            f"cuda_visible_devices={os.environ.get('CUDA_VISIBLE_DEVICES', '(unset)')}"
+        self.logger.info(
+            "Starting training",
+            extra={
+                "run_name": run_context.run_name,
+                "epochs": config.epochs,
+                "cuda_visible_devices": os.environ.get('CUDA_VISIBLE_DEVICES', '(unset)')
+            }
         )
 
         self._log_path_diagnostics(config)
@@ -169,15 +174,22 @@ class TrainingExecutor:
 
     def _log_path_diagnostics(self, config: TrainConfig) -> None:
         """Log path diagnostics for datasets and output directories."""
-        print(
-            f"[executor] Paths: dataset_root={config.root} "
-            f"tb_root={config.tb_root} ckpt_dir={config.ckpt_dir}"
+        self.logger.info(
+            "Training paths configuration",
+            extra={
+                "dataset_root": config.root,
+                "tb_root": config.tb_root,
+                "ckpt_dir": config.ckpt_dir
+            }
         )
 
         if not os.path.isdir(config.root):
-            print(
-                f"[executor][warn] Dataset root does not exist: {config.root}. "
-                "Ensure the host folder is mounted into the container (DATASETS_DIR)."
+            self.logger.warning(
+                "Dataset root does not exist - ensure host folder is mounted",
+                extra={
+                    "dataset_root": config.root,
+                    "container_mount": "DATASETS_DIR"
+                }
             )
 
     def _log_memory_diagnostics(self, config: TrainConfig) -> None:
@@ -190,20 +202,30 @@ class TrainingExecutor:
             num_workers = int(getattr(config, "num_workers", 4) or 0)
             prefetch_factor = int(getattr(config, "prefetch_factor", 4) or 2)
 
-            print(
-                f"[executor] /dev/shm total={shm_total//(1024**2)}MB "
-                f"avail={shm_avail//(1024**2)}MB; "
-                f"num_workers={num_workers} prefetch_factor={prefetch_factor}"
+            self.logger.info(
+                "Shared memory diagnostics",
+                extra={
+                    "shm_total_mb": shm_total//(1024**2),
+                    "shm_avail_mb": shm_avail//(1024**2),
+                    "num_workers": num_workers,
+                    "prefetch_factor": prefetch_factor
+                }
             )
 
             if num_workers > 0 and shm_avail < 512 * 1024 * 1024:
-                print(
-                    "[executor][warn] Low shared memory available for DataLoader workers. "
-                    "Increase container shm_size (e.g., 2GB) or set num_workers=0 "
-                    "in the config to avoid worker crashes."
+                self.logger.warning(
+                    "Low shared memory for DataLoader workers - consider increasing shm_size or setting num_workers=0",
+                    extra={
+                        "shm_avail_mb": shm_avail//(1024**2),
+                        "recommended_shm_size": "2GB",
+                        "alternative": "num_workers=0"
+                    }
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.warning(
+                "Failed to retrieve shared memory diagnostics",
+                extra={"error": str(e)}
+            )
 
     def _run_training(
         self,
@@ -249,12 +271,23 @@ class TrainingExecutor:
         db.add(run)
         db.commit()
 
-        print(f"[executor] Training {'completed' if success else 'failed'} for run={run_context.run_name}")
+        self.logger.info(
+            "Training run status updated",
+            extra={
+                "run_name": run_context.run_name,
+                "status": "completed" if success else "failed"
+            }
+        )
 
     def _handle_training_error(self, db, run_context: RunContext, error: Exception) -> None:
         """Handle training execution errors."""
-        print(f"[executor][error] Exception while training run={run_context.run_name}: {error}")
-        traceback.print_exc()
+        self.logger.exception(
+            "Training execution failed",
+            extra={
+                "run_name": run_context.run_name,
+                "error": str(error)
+            }
+        )
 
         run = db.get(models.Run, run_context.run_id)
         if not run:
@@ -305,7 +338,10 @@ class TrainingExecutor:
         )
 
         if model_registry and model_registry.hf_token:
-            print(f"[executor] Using HF token for private model: {model_flavour}")
+            self.logger.info(
+                "Using HuggingFace token for private model",
+                extra={"model_flavour": model_flavour}
+            )
             return model_registry.hf_token
 
         return None

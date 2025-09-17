@@ -106,13 +106,21 @@ class LogStreamer:
                 }
                 # Schedule the broadcast safely
                 self._safe_broadcast(log_event)
-            except Exception:
-                # Don't let WebSocket errors break logging
-                pass
+            except Exception as e:
+                from shared.logging.config import get_logger
+                logger = get_logger("agent.log_streamer")
+                logger.debug(
+                    "Failed to broadcast log event via WebSocket",
+                    extra={"run_id": self.run_id, "error": str(e)}
+                )
 
-        except Exception:
-            # Don't let logging errors break the training
-            pass
+        except Exception as e:
+            from shared.logging.config import get_logger
+            logger = get_logger("agent.log_streamer")
+            logger.error(
+                "Failed to store log message to database",
+                extra={"run_id": self.run_id, "level": level, "source": source, "error": str(e)}
+            )
         finally:
             db.close()
 
@@ -134,14 +142,23 @@ class LogStreamer:
                     try:
                         logs = [log_event]
                         asyncio.run(websocket_notifier.notify_run_logs(self.run_id, logs))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        from shared.logging.config import get_logger
+                        logger = get_logger("agent.log_streamer")
+                        logger.debug(
+                            "Failed to notify WebSocket in background thread",
+                            extra={"run_id": self.run_id, "error": str(e)}
+                        )
 
                 thread = threading.Thread(target=run_broadcast, daemon=True)
                 thread.start()
-        except Exception:
-            # Silently fail to avoid breaking training
-            pass
+        except Exception as e:
+            from shared.logging.config import get_logger
+            logger = get_logger("agent.log_streamer")
+            logger.debug(
+                "Failed to safely broadcast log event",
+                extra={"run_id": self.run_id, "error": str(e)}
+            )
 
 
 class LogCapture:
@@ -226,13 +243,21 @@ class LogCapture:
                 }
                 # Schedule the broadcast safely
                 self._safe_broadcast(log_event)
-            except Exception:
-                # Don't let WebSocket errors break logging
-                pass
+            except Exception as e:
+                from shared.logging.config import get_logger
+                logger = get_logger("agent.log_streamer")
+                logger.debug(
+                    "Failed to broadcast log capture event via WebSocket",
+                    extra={"run_id": self.run_id, "level": self.level, "source": self.source, "error": str(e)}
+                )
 
-        except Exception:
-            # Don't let logging errors break the training
-            pass
+        except Exception as e:
+            from shared.logging.config import get_logger
+            logger = get_logger("agent.log_streamer")
+            logger.error(
+                "Failed to store log capture message to database",
+                extra={"run_id": self.run_id, "level": self.level, "source": self.source, "error": str(e)}
+            )
         finally:
             db.close()
 
@@ -254,11 +279,20 @@ class LogCapture:
                     try:
                         logs = [log_event]
                         asyncio.run(websocket_notifier.notify_run_logs(self.run_id, logs))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        from shared.logging.config import get_logger
+                        logger = get_logger("agent.log_streamer")
+                        logger.debug(
+                            "Failed to notify WebSocket in log capture background thread",
+                            extra={"run_id": self.run_id, "level": self.level, "source": self.source, "error": str(e)}
+                        )
 
                 thread = threading.Thread(target=run_broadcast, daemon=True)
                 thread.start()
-        except Exception:
-            # Silently fail to avoid breaking training
-            pass
+        except Exception as e:
+            from shared.logging.config import get_logger
+            logger = get_logger("agent.log_streamer")
+            logger.debug(
+                "Failed to safely broadcast log capture event",
+                extra={"run_id": self.run_id, "level": self.level, "source": self.source, "error": str(e)}
+            )

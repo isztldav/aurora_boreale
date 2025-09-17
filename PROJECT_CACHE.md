@@ -95,6 +95,8 @@ database/           # Centralized database management
 ├── models.py       # All SQLAlchemy models (User, Project, Agent, etc.)
 ├── connection.py   # Database connection, session management, init_db()
 └── schemas.py      # All Pydantic request/response schemas
+logging/            # Unified logging system
+├── config.py       # Centralized logging configuration + structured logging
 types/             # Shared type definitions
 ```
 
@@ -228,6 +230,7 @@ from core.utils.registry import get_optimizer_factory
 from shared.database.connection import SessionLocal, get_db, init_db
 from shared.database import models
 from shared.database.schemas import ProjectCreate, RunOut
+from shared.logging.config import setup_logging, get_logger, configure_uvicorn_logging
 
 # Service-specific imports
 from dashboard.routers.projects import router
@@ -241,6 +244,7 @@ from agent.services.training_executor import TrainingExecutor
 - **Registry Pattern**: Centralized configuration management (`core/utils/registry.py`)
 - **Repository Pattern**: Clean data access layer (in agent)
 - **Factory Pattern**: Dependency injection for testability
+- **Structured Logging**: Centralized logging with service-specific loggers and structured context
 
 ### Frontend Patterns
 - **React Hooks**: Functional components with custom hooks
@@ -272,6 +276,11 @@ NEXT_PUBLIC_API_BASE="http://localhost:8000/api/v1"
 GPU_INDEX=0
 DATASETS_DIR="/app/datasets"
 AGENT_ID="agent-gpu-0"
+
+# Logging (Shared)
+LOG_LEVEL="INFO"              # DEBUG, INFO, WARNING, ERROR
+LOG_DIR="/app/logs"           # Log file directory
+LOG_FORMAT="structured"       # structured or simple
 ```
 
 ### Docker Services
@@ -363,6 +372,7 @@ cd web_ui && npm run typecheck
 **Current State**: No formal test suite
 **Patterns**: HTTPException (backend), Enhanced error parsing + user-friendly UI (frontend)
 **Error Handling**: Comprehensive error parsing in API client, graceful model testing failures
+**Logging**: Production-ready structured logging with no silent exception handling
 **Recommended**: pytest (backend), Jest + Testing Library (frontend)
 
 ## 🔐 Authentication
@@ -401,6 +411,14 @@ cd web_ui && npm run typecheck
 - **User Experience**: User-friendly error messages instead of raw JSON responses
 - **Visual Feedback**: Better error states in model testing and form validation
 
+### **🆕 Comprehensive Logging System (Latest)**
+- **Unified Configuration**: Centralized logging setup in `src/shared/logging/config.py`
+- **Service-Specific Loggers**: Structured logging for dashboard, agent, and core components
+- **No Silent Exceptions**: All previously silent exception handlers now log with proper context
+- **Environment-Based Control**: Production vs development log levels via environment variables
+- **Structured Context**: All log entries include relevant metadata (run_id, agent_id, error details)
+- **Docker Integration**: Proper log volume mounting and file rotation in containerized deployments
+
 ## 🎯 **🆕 Architecture Benefits (Post-Refactoring)**
 
 ### **Clear Separation of Concerns**
@@ -423,5 +441,5 @@ cd web_ui && npm run typecheck
 
 ---
 
-**Last Updated**: Major architecture refactoring with clean separation of concerns - September 2025
+**Last Updated**: Comprehensive logging system implementation with no silent exceptions - September 2025
 **Usage**: Provide this cache to agents for quick project understanding and feature extension guidance

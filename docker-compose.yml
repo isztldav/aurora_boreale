@@ -26,6 +26,7 @@ services:
     volumes:
       - ./:/app
       - ./runs:/app/runs
+      - ./logs:/app/logs
     environment:
       # Point the app to Postgres in the internal network
       DASHBOARD_DB_URL: postgresql+psycopg2://dashboard:dashboard@db:5432/dashboard
@@ -34,6 +35,9 @@ services:
       TB_SWEEP_INTERVAL: "30"      # seconds
       PYTHONUNBUFFERED: "1"
       PYTHONPATH: /app/src
+      # Production logging configuration
+      LOG_LEVEL: "INFO"
+      LOG_DIR: "/app/logs"
     command: >
       bash -lc "uvicorn src.dashboard.app:app --host 0.0.0.0 --port 8000"
     depends_on:
@@ -57,6 +61,7 @@ services:
       - ./runs:/app/runs
       # Host datasets folder mounted inside the agent container
       - ./datasets:/app/datasets
+      - ./logs:/app/logs
     environment:
       DASHBOARD_DB_URL: postgresql+psycopg2://dashboard:dashboard@db:5432/dashboard
       DASHBOARD_URL: http://web:8000
@@ -67,6 +72,9 @@ services:
       # GPU index this container will serve (one agent per GPU)
       GPU_INDEX: "0"
       PYTHONPATH: /app/src
+      # Production logging configuration
+      LOG_LEVEL: "INFO"
+      LOG_DIR: "/app/logs"
     # Run the agent directly; deps are already installed in the image
     command: bash -lc "python -m agent.server --gpu-index $$GPU_INDEX"
     # Increase shared memory for PyTorch DataLoader workers

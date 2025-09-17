@@ -3,15 +3,21 @@ from starlette.responses import RedirectResponse, JSONResponse
 from starlette.middleware.wsgi import WSGIMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
+from shared.logging.config import setup_logging, configure_uvicorn_logging
 from shared.database.connection import init_db, SessionLocal
 from shared.database import models
 from .routers import projects, groups, configs, runs, agents, auth, datasets, registry_models, augmentations, registry, model_testing
 
 
 def create_app() -> FastAPI:
+    # Setup logging first
+    logger = setup_logging("dashboard")
+    configure_uvicorn_logging()
+
     app = FastAPI(title="Unified Training Dashboard (MVP)", version="0.1.0")
 
     # Init DB
+    logger.info("Initializing database schema")
     init_db()
 
     # CORS for external UI (e.g. Next.js on localhost:3000)

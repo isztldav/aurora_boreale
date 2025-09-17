@@ -2,6 +2,9 @@ import os
 import json
 from typing import Tuple, Optional, Dict, Any
 import torch
+from shared.logging.config import get_logger
+
+logger = get_logger("core.checkpoint")
 
 def _is_improved(curr: float, best: Optional[float], mode: str) -> bool:
     if best is None:
@@ -53,8 +56,11 @@ def save_model_checkpoints(
                 meta = json.load(f)
             if meta.get("monitor") == monitor and meta.get("mode") == mode:
                 best_value = float(meta.get("best_value"))
-        except Exception:
-            pass  # corrupted meta; ignore
+        except Exception as e:
+            logger.warning(
+                "Failed to load checkpoint metadata - may be corrupted",
+                extra={"meta_path": meta_path, "error": str(e)}
+            )
 
     # --- save per-epoch checkpoint ---
     epoch_idx = epoch + 1  # human-friendly

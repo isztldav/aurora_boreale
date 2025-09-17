@@ -52,13 +52,19 @@ def _start_sweeper_if_needed():
                                     if ing is not None and hasattr(ing, "_reload_interval"):
                                         # Setting to 0 causes the loop to exit on next tick
                                         setattr(ing, "_reload_interval", 0)
-                                except Exception:
-                                    _log.debug("Failed to adjust ingester reload interval for %s", run_id)
+                                except Exception as e:
+                                    _log.debug(
+                                        "Failed to adjust ingester reload interval",
+                                        extra={"run_id": run_id, "error": str(e)}
+                                    )
                                 _apps.pop(run_id, None)
                                 _app_logdirs.pop(run_id, None)
                             _last_ping.pop(run_id, None)
                 except Exception as e:
-                    _log.exception("Error in TensorBoard sweeper: %s", e)
+                    _log.error(
+                        "Error in TensorBoard sweeper",
+                        extra={"error": str(e)}
+                    )
                 time.sleep(SWEEP_INTERVAL)
 
         _sweeper_thread = threading.Thread(target=_sweeper, name="tb-sweeper", daemon=True)
@@ -103,8 +109,11 @@ def _build_tb_wsgi_app(logdir: str, path_prefix: str):
     # Attach the ingester so callers can control its lifecycle
     try:
         setattr(app, "_tb_ingester", getattr(tb, "_ingester", None))
-    except Exception:
-        pass
+    except Exception as e:
+        _log.debug(
+            "Failed to attach TensorBoard ingester to app",
+            extra={"logdir": logdir, "error": str(e)}
+        )
     return app
 
 

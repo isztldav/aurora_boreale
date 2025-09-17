@@ -7,6 +7,7 @@ from typing import Optional, Callable
 
 # Database initialization is handled by the dashboard backend only
 
+from shared.logging.config import get_logger
 from ..domain import AgentStatus, AgentConfig, TrainingProgress, RunContext
 from ..repositories import RunRepository
 from .training_executor import TrainingExecutor
@@ -18,6 +19,7 @@ class AgentManager:
     """
 
     def __init__(self, config: AgentConfig):
+        self.logger = get_logger("agent.manager")
         self.config = config
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
@@ -63,17 +65,17 @@ class AgentManager:
     def request_halt(self) -> None:
         """Request halt of current training run."""
         self._halt_requested.set()
-        print("[agent_manager] Halt requested")
+        self.logger.info("Halt requested for current training run")
 
     def request_cancel(self) -> None:
         """Request immediate cancellation of current training run."""
         self._cancel_requested.set()
-        print("[agent_manager] Cancel requested")
+        self.logger.info("Cancel requested for current training run")
 
     def request_finish(self) -> None:
         """Request early finish of current training run."""
         self._finish_requested.set()
-        print("[agent_manager] Finish requested")
+        self.logger.info("Finish requested for current training run")
 
     def stop(self) -> None:
         """Stop the agent manager."""
@@ -82,7 +84,10 @@ class AgentManager:
     async def run_forever(self) -> None:
         """Main agent loop - polls for jobs and executes training runs."""
         # Note: Database initialization is handled by the dashboard backend
-        print(f"[agent_manager] Started for agent_id={self.config.agent_id}, polling every {self.config.poll_interval:.1f}s")
+        self.logger.info(
+            "Agent manager started",
+            extra={"agent_id": self.config.agent_id, "poll_interval": self.config.poll_interval}
+        )
 
         while not self._stop_event.is_set():
             did_work = await asyncio.get_event_loop().run_in_executor(None, self._process_next_run)
@@ -114,7 +119,10 @@ class AgentManager:
             self._finalize_run_state(run_context, success)
 
         except Exception as e:
-            print(f"[agent_manager] Unexpected error executing run {run_context.run_name}: {e}")
+            self.logger.exception(
+                "Unexpected error executing training run",
+                extra={"run_name": run_context.run_name, "run_id": run_context.run_id}
+            )
             self._finalize_run_state(run_context, success=False)
         finally:
             self._clear_run_state()
@@ -134,7 +142,10 @@ class AgentManager:
             self._avg_epoch_time = None
             self._started_at_ts = time.time()
 
-        print(f"[agent_manager] Starting run: {run_context.run_name}")
+        self.logger.info(
+            "Starting training run",
+            extra={"run_name": run_context.run_name, "run_id": run_context.run_id}
+        )
 
     def _finalize_run_state(self, run_context: RunContext, success: bool) -> None:
         """Finalize run state based on completion status."""
@@ -154,7 +165,10 @@ class AgentManager:
             self._run_repository.mark_run_failed(run_context.run_id)
             status = "failed"
 
-        print(f"[agent_manager] Run {run_context.run_name} {status}")
+        self.logger.info(
+            "Training run completed",
+            extra={"run_name": run_context.run_name, "run_id": run_context.run_id, "status": status}
+        )
 
     def _clear_run_state(self) -> None:
         """Clear current run state."""
@@ -166,7 +180,10 @@ class AgentManager:
             self._avg_epoch_time = None
             self._started_at_ts = None
 
-        print(f"[agent_manager] Cleared run state for agent_id={self.config.agent_id}")
+        self.logger.debug(
+            "Cleared run state",
+            extra={"agent_id": self.config.agent_id}
+        )
 
     def _on_training_progress(self, progress: TrainingProgress) -> None:
         """Handle training progress updates."""
@@ -189,10 +206,14 @@ class AgentManager:
             progress.epoch + 1  # Human-friendly 1-based indexing
         )
 
-        print(
-            f"[agent_manager] Epoch {progress.epoch + 1}/{progress.total_epochs} "
-            f"finished in {progress.epoch_duration:.1f}s"
-            + (f", ETA ~{eta:.0f}s" if eta else "")
+        self.logger.info(
+            "Training epoch completed",
+            extra={
+                "epoch": progress.epoch + 1,
+                "total_epochs": progress.total_epochs,
+                "epoch_duration": progress.epoch_duration,
+                "eta_seconds": eta
+            }
         )
 
     def _should_stop(self) -> bool:
@@ -222,8 +243,8 @@ class AgentManager:
         """Log idle status with throttling to avoid spam."""
         now = time.time()
         if now - self._last_idle_log_ts >= self.config.idle_log_interval:
-            print(
-                f"[agent_manager] No queued runs for agent_id={self.config.agent_id}. "
-                f"Next check in {self.config.poll_interval:.1f}s"
+            self.logger.debug(
+                "No queued runs available",
+                extra={"agent_id": self.config.agent_id, "poll_interval": self.config.poll_interval}
             )
             self._last_idle_log_ts = now

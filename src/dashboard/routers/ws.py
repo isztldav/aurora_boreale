@@ -38,7 +38,13 @@ class ConnectionManager:
                 continue
             try:
                 await c.ws.send_text(message)
-            except Exception:
+            except Exception as e:
+                from shared.logging.config import get_logger
+                logger = get_logger("dashboard.websocket")
+                logger.debug(
+                    "Failed to send WebSocket message, dropping connection",
+                    extra={"topic": topic, "error": str(e)}
+                )
                 # Best-effort: drop broken connections
                 self.disconnect(c)
 

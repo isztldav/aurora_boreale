@@ -121,8 +121,13 @@ def create_run_from_config(config_id: str, payload: RunCreate, db: Session = Dep
         }
         import anyio
         anyio.from_thread.run(ws_manager.broadcast_json, payload, topic="runs")
-    except Exception:
-        pass
+    except Exception as e:
+        from shared.logging.config import get_logger
+        logger = get_logger("dashboard.runs")
+        logger.debug(
+            "Failed to broadcast run creation event",
+            extra={"run_id": str(run.id), "error": str(e)}
+        )
 
     return run
 
@@ -146,7 +151,12 @@ def cancel_run(run_id: str, db: Session = Depends(get_db)):
                 return {"ok": True, "message": "Cancel request sent to agent"}
         except Exception as e:
             # If agent is unreachable, update state directly
-            print(f"[runs] Agent unreachable for cancel, updating state directly: {e}")
+            from shared.logging.config import get_logger
+            logger = get_logger("dashboard.runs")
+            logger.warning(
+                "Agent unreachable for cancel, updating state directly",
+                extra={"run_id": run_id, "agent_id": str(run.agent_id), "error": str(e)}
+            )
 
     # For queued runs or when agent is unreachable, update state directly
     run.state = "canceled"
@@ -172,8 +182,13 @@ def cancel_run(run_id: str, db: Session = Depends(get_db)):
         }
         import anyio
         anyio.from_thread.run(ws_manager.broadcast_json, payload, topic="runs")
-    except Exception:
-        pass
+    except Exception as e:
+        from shared.logging.config import get_logger
+        logger = get_logger("dashboard.runs")
+        logger.debug(
+            "Failed to broadcast run cancel event",
+            extra={"run_id": str(run.id), "error": str(e)}
+        )
     return {"ok": True, "state": run.state}
 
 
@@ -198,7 +213,12 @@ def finish_run(run_id: str, success: bool = True, db: Session = Depends(get_db))
                 return {"ok": True, "message": "Finish request sent to agent"}
         except Exception as e:
             # If agent is unreachable, update state directly
-            print(f"[runs] Agent unreachable for finish, updating state directly: {e}")
+            from shared.logging.config import get_logger
+            logger = get_logger("dashboard.runs")
+            logger.warning(
+                "Agent unreachable for finish, updating state directly",
+                extra={"run_id": run_id, "agent_id": str(run.agent_id), "error": str(e)}
+            )
 
     # For non-running runs or when agent is unreachable, update state directly
     run.state = "succeeded" if success else "failed"
@@ -223,8 +243,13 @@ def finish_run(run_id: str, success: bool = True, db: Session = Depends(get_db))
         }
         import anyio
         anyio.from_thread.run(ws_manager.broadcast_json, payload, topic="runs")
-    except Exception:
-        pass
+    except Exception as e:
+        from shared.logging.config import get_logger
+        logger = get_logger("dashboard.runs")
+        logger.debug(
+            "Failed to broadcast run finish event",
+            extra={"run_id": str(run.id), "error": str(e)}
+        )
     return {"ok": True, "state": run.state}
 
 

@@ -25,9 +25,13 @@ class GPUDiscoveryService:
 
         try:
             gpu_info = GPUDiscoveryService._discover_with_torch(gpu_info)
-        except Exception:
-            # Fallback to empty info if torch unavailable or fails
-            pass
+        except Exception as e:
+            from shared.logging.config import get_logger
+            logger = get_logger("agent.gpu_discovery")
+            logger.warning(
+                "Failed to discover GPU info with PyTorch, using fallback",
+                extra={"gpu_index": index, "error": str(e)}
+            )
 
         return gpu_info
 
@@ -107,7 +111,13 @@ class GPUDiscoveryService:
             )
             uuid_str = result.stdout.strip().splitlines()[0].strip()
             return uuid_str if uuid_str else None
-        except Exception:
+        except Exception as e:
+            from shared.logging.config import get_logger
+            logger = get_logger("agent.gpu_discovery")
+            logger.debug(
+                "Failed to query GPU UUID via nvidia-smi",
+                extra={"gpu_index": gpu_index, "error": str(e)}
+            )
             return None
 
     @staticmethod
