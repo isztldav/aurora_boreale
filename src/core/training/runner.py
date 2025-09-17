@@ -172,7 +172,7 @@ def run_experiment(
                 global_step_start=global_step,
                 max_grad_norm=cfg.max_grad_norm,
                 grad_accum_steps=cfg.grad_accum_steps,
-                autocast_dtype=cfg.autocast_dtype,
+                autocast_dtype=cfg.get_torch_dtype(),
                 batch_transform=train_batch_tf,
                 log_streamer=log_streamer,
                 total_epochs=cfg.epochs,
@@ -195,7 +195,7 @@ def run_experiment(
                 log_prefix="val",
                 fig_dir=os.path.join(tb_log_dir, "figures"),
                 topks=cfg.eval_topk,
-                autocast_dtype=cfg.autocast_dtype,
+                autocast_dtype=cfg.get_torch_dtype(),
             )
 
             if writer:

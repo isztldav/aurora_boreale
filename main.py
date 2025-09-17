@@ -4,9 +4,9 @@ import json
 from typing import Any, Dict
 
 from configs.examples import training_configurations
-from common.experiments import make_run_base, unique_run_name, sanitize_name
-from common.runner import run_experiment
-from common.config import TrainConfig
+from core.utils.experiments import make_run_base, unique_run_name, sanitize_name
+from core.training.runner import run_experiment
+from core.config import TrainConfig
 
 
 def _run_single(cfg: TrainConfig) -> None:
@@ -44,15 +44,7 @@ def main() -> None:
     if args.config is not None:
         with open(args.config, "r", encoding="utf-8") as f:
             data: Dict[str, Any] = json.load(f)
-        # Convert autocast_dtype if passed as a string like "torch.bfloat16"
-        if isinstance(data.get("autocast_dtype"), str):
-            try:
-                import torch as _torch
-
-                dtype_str = data["autocast_dtype"].replace("torch.", "")
-                data["autocast_dtype"] = getattr(_torch, dtype_str)
-            except Exception:
-                pass
+        # TrainConfig now handles dtype conversion automatically
         cfg = TrainConfig(**data)
         _run_single(cfg)
         return

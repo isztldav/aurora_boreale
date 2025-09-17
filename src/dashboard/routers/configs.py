@@ -4,7 +4,7 @@ import hashlib
 
 from shared.database.connection import get_db
 from shared.database import models
-from shared.database.schemas import TrainConfigCreate, TrainConfigOut, TrainConfigIn, TrainConfigUpdate
+from shared.database.schemas import TrainConfigCreate, TrainConfigOut, TrainConfigUpdate
 
 router = APIRouter(prefix="/configs", tags=["configs"])
 

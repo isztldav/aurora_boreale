@@ -5,6 +5,9 @@ from typing import Optional, List
 from pydantic import BaseModel, Field
 from uuid import UUID
 
+# Import TrainConfig from core
+from core.config import TrainConfig
+
 
 class ProjectCreate(BaseModel):
     name: str
@@ -47,52 +50,20 @@ class GroupOut(BaseModel):
         from_attributes = True
 
 
-class TrainConfigIn(BaseModel):
-    # Flat TrainConfig fields (mirror src/common/config.TrainConfig)
-    root: str
-    model_flavour: str
-    loss_name: str
-    batch_size: int = 256
-    num_workers: int = 4
-    prefetch_factor: int = 4
-    persistent_workers: bool = False
-    epochs: int = 10
-    optimizer: str = "adam"
-    lr: float = 1e-3
-    weight_decay: float = 0.05
-    max_grad_norm: float = 1.0
-    warmup_ratio: float = 0.05
-    grad_accum_steps: int = 1
-    seed: int = 42
-    autocast_dtype: str = "torch.bfloat16"
-    load_pretrained: bool = True
-    run_name: Optional[str] = None
-    tb_root: str = "runs"
-    eval_topk: list[int] = [3, 5]
-    model_suffix: str = ""
-    freeze_backbone: bool = False
-    ckpt_dir: str = "checkpoints"
-    monitor_metric: str = "val_acc@1"
-    monitor_mode: str = "max"
-    save_per_epoch_checkpoint: bool = False
-    max_datapoints_per_class: int | list[int] = 10_000
-
-    # New augmentation options
-    gpu_batch_aug: Optional[dict] = None
-    cpu_color_jitter: Optional[dict] = None
+# TrainConfigIn removed - using core.config.TrainConfig directly
 
 
 class TrainConfigCreate(BaseModel):
     project_id: str
     group_id: Optional[str] = None
     name: str
-    config_json: TrainConfigIn
+    config_json: TrainConfig
 
 
 class TrainConfigUpdate(BaseModel):
     name: Optional[str] = None
     group_id: Optional[str] = None
-    config_json: Optional[TrainConfigIn] = None
+    config_json: Optional[TrainConfig] = None
 
 
 class TrainConfigOut(BaseModel):

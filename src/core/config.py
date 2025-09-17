@@ -3,9 +3,9 @@ from typing import Optional, Tuple, Any, Union, Iterable, Dict, List
 import os
 import json
 import torch
+from pydantic import BaseModel, Field, field_validator
 
-@dataclass
-class TrainConfig:
+class TrainConfig(BaseModel):
     root: str
     model_flavour: str
     loss_name: str
@@ -22,17 +22,17 @@ class TrainConfig:
     warmup_ratio: float = 0.05
     grad_accum_steps: int = 1
     seed: int = 42
-    autocast_dtype: torch.dtype = torch.bfloat16
+    autocast_dtype: str = "torch.bfloat16"
     #log_every: int = 100
 
     # HF model weights
     load_pretrained: bool = True
-    hf_token: Optional[bool] = None  # HuggingFace token used for private models
+    hf_token: Optional[str] = None  # HuggingFace token used for private models
 
     # Logging
     run_name: Optional[str] = None
     tb_root: str = "runs"
-    eval_topk: Tuple[int, ...] = (3, 5)
+    eval_topk: List[int] = Field(default_factory=lambda: [3, 5])
     model_suffix: str = ''
     
     # Checkpoints
@@ -43,7 +43,7 @@ class TrainConfig:
     save_per_epoch_checkpoint: bool = False
 
     # Dataset
-    max_datapoints_per_class: Union[int, Iterable] = 10_000
+    max_datapoints_per_class: Union[int, List[int]] = 10_000
 
     # Optional GPU-batched augmentations (Kornia) applied on training batches.
     # Provide a JSON-serializable spec, e.g. {"preset": "cfp_dr_v1"} or
@@ -55,9 +55,34 @@ class TrainConfig:
     cpu_color_jitter: Optional[Dict[str, Any]] = None
 
     # Dataset labels - populated during training run
-    class_labels: Optional[List[str]] = None  # List of class names in order
-    label2id: Optional[Dict[str, int]] = None  # Mapping from class name to ID
-    id2label: Optional[Dict[int, str]] = None  # Mapping from ID to class name
+    class_labels: Optional[List[str]] = Field(default=None)  # List of class names in order
+    label2id: Optional[Dict[str, int]] = Field(default=None)  # Mapping from class name to ID
+    id2label: Optional[Dict[int, str]] = Field(default=None)  # Mapping from ID to class name
+
+    @field_validator('autocast_dtype')
+    @classmethod
+    def validate_autocast_dtype(cls, v):
+        """Validate and convert autocast_dtype string to torch.dtype if needed."""
+        if isinstance(v, str):
+            if v.startswith('torch.'):
+                dtype_name = v.replace('torch.', '')
+                if hasattr(torch, dtype_name):
+                    return v  # Keep as string for JSON serialization
+            return v
+        elif hasattr(v, '__module__') and v.__module__ == 'torch':
+            return str(v)  # Convert torch.dtype to string
+        return v
+
+    def get_torch_dtype(self) -> torch.dtype:
+        """Get the actual torch.dtype from the string representation."""
+        if isinstance(self.autocast_dtype, str):
+            dtype_name = self.autocast_dtype.replace('torch.', '')
+            return getattr(torch, dtype_name)
+        return self.autocast_dtype
+
+    class Config:
+        # Allow arbitrary types (for backward compatibility during transition)
+        arbitrary_types_allowed = True
 
 
 def _convert_jsonable(obj: Any):
@@ -81,10 +106,10 @@ def _convert_jsonable(obj: Any):
 
 def save_train_config(cfg: TrainConfig, path: str) -> str:
     """
-    Save a TrainConfig dataclass to JSON at `path`, overwriting if it exists.
+    Save a TrainConfig Pydantic model to JSON at `path`, overwriting if it exists.
     Returns the final path.
     """
-    data = _convert_jsonable(asdict(cfg))
+    data = cfg.model_dump()
     dirpath = os.path.dirname(path)
     if dirpath:
         os.makedirs(dirpath, exist_ok=True)
