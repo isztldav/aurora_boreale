@@ -96,20 +96,19 @@ class LogStreamer:
 
             # Broadcast log event via WebSocket
             try:
-                try:
-                    log_event = {
-                        "type": "run.log",
-                        "run_id": self.run_id,
-                        "timestamp": timestamp.isoformat(),
-                        "level": level,
-                        "source": source,
-                        "message": message.strip()
-                    }
-                    # Schedule the broadcast safely
-                    self._safe_broadcast(log_event)
-                except Exception:
-                    # Don't let WebSocket errors break logging
-                    pass
+                log_event = {
+                    "type": "run.log",
+                    "run_id": self.run_id,
+                    "timestamp": timestamp.isoformat(),
+                    "level": level,
+                    "source": source,
+                    "message": message.strip()
+                }
+                # Schedule the broadcast safely
+                self._safe_broadcast(log_event)
+            except Exception:
+                # Don't let WebSocket errors break logging
+                pass
 
         except Exception:
             # Don't let logging errors break the training
@@ -217,20 +216,19 @@ class LogCapture:
 
             # Broadcast log event via WebSocket
             try:
-                try:
-                    log_event = {
-                        "type": "run.log",
-                        "run_id": self.run_id,
-                        "timestamp": timestamp.isoformat(),
-                        "level": self.level,
-                        "source": self.source,
-                        "message": message.strip()
-                    }
-                    # Schedule the broadcast safely
-                    self._safe_broadcast(log_event)
-                except Exception:
-                    # Don't let WebSocket errors break logging
-                    pass
+                log_event = {
+                    "type": "run.log",
+                    "run_id": self.run_id,
+                    "timestamp": timestamp.isoformat(),
+                    "level": self.level,
+                    "source": self.source,
+                    "message": message.strip()
+                }
+                # Schedule the broadcast safely
+                self._safe_broadcast(log_event)
+            except Exception:
+                # Don't let WebSocket errors break logging
+                pass
 
         except Exception:
             # Don't let logging errors break the training
