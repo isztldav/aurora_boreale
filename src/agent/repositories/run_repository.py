@@ -7,12 +7,7 @@ from shared.database.connection import SessionLocal
 from shared.database import models
 
 from ..domain import RunContext
-
-# Import WebSocket manager for real-time updates (optional)
-try:
-    from dashboard.routers.ws import ws_manager
-except ImportError:
-    ws_manager = None
+from ..services.websocket_notifier import websocket_notifier
 
 
 class RunRepository:
@@ -162,41 +157,9 @@ class RunRepository:
 
     def _broadcast_run_update(self, run: models.Run) -> None:
         """Broadcast run state update via WebSocket."""
-        if not ws_manager:
-            return
-
         try:
-            payload = {
-                "type": "run.updated",
-                "run": self._serialize_run(run),
-            }
             import anyio
-            anyio.from_thread.run(ws_manager.broadcast_json, payload, topic="runs")
+            anyio.from_thread.run(websocket_notifier.notify_run_update, run)
         except Exception as e:
             print(f"[repository] Failed to broadcast run update: {e}")
 
-    def _serialize_run(self, run: models.Run) -> dict:
-        """Serialize run model for WebSocket broadcast."""
-        return {
-            "id": str(run.id),
-            "project_id": str(run.project_id) if run.project_id else None,
-            "config_id": str(run.config_id) if run.config_id else None,
-            "group_id": str(run.group_id) if run.group_id else None,
-            "name": run.name,
-            "state": run.state,
-            "monitor_metric": run.monitor_metric,
-            "monitor_mode": run.monitor_mode,
-            "best_value": run.best_value,
-            "epoch": run.epoch,
-            "step": run.step,
-            "started_at": run.started_at.isoformat() if run.started_at else None,
-            "finished_at": run.finished_at.isoformat() if run.finished_at else None,
-            "agent_id": str(run.agent_id) if run.agent_id else None,
-            "docker_image": run.docker_image,
-            "seed": run.seed,
-            "log_dir": run.log_dir,
-            "ckpt_dir": run.ckpt_dir,
-            "created_at": run.created_at.isoformat() if run.created_at else None,
-            "updated_at": run.updated_at.isoformat() if run.updated_at else None,
-            "gpu_indices": run.gpu_indices or [],
-        }

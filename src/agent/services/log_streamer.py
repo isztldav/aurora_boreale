@@ -9,11 +9,8 @@ from typing import Optional, Callable
 from shared.database.connection import SessionLocal
 from shared.database import models
 
-# Import WebSocket manager for real-time updates (optional)
-try:
-    from dashboard.routers.ws import ws_manager
-except ImportError:
-    ws_manager = None
+# Import WebSocket notifier for real-time updates
+from .websocket_notifier import websocket_notifier
 
 
 class LogStreamer:
@@ -97,8 +94,8 @@ class LogStreamer:
             db.add(log_entry)
             db.commit()
 
-            # Broadcast log event via WebSocket if available
-            if ws_manager:
+            # Broadcast log event via WebSocket
+            try:
                 try:
                     log_event = {
                         "type": "run.log",
@@ -130,12 +127,14 @@ class LogStreamer:
             try:
                 loop = asyncio.get_running_loop()
                 # We're in an async context, schedule the coroutine
-                loop.create_task(ws_manager.broadcast_json(log_event, topic="runs"))
+                logs = [log_event]  # Wrap single log event in list for API compatibility
+                loop.create_task(websocket_notifier.notify_run_logs(self.run_id, logs))
             except RuntimeError:
                 # No running event loop, run in thread
                 def run_broadcast():
                     try:
-                        asyncio.run(ws_manager.broadcast_json(log_event, topic="runs"))
+                        logs = [log_event]
+                        asyncio.run(websocket_notifier.notify_run_logs(self.run_id, logs))
                     except Exception:
                         pass
 
@@ -216,8 +215,8 @@ class LogCapture:
             db.add(log_entry)
             db.commit()
 
-            # Broadcast log event via WebSocket if available
-            if ws_manager:
+            # Broadcast log event via WebSocket
+            try:
                 try:
                     log_event = {
                         "type": "run.log",
@@ -249,12 +248,14 @@ class LogCapture:
             try:
                 loop = asyncio.get_running_loop()
                 # We're in an async context, schedule the coroutine
-                loop.create_task(ws_manager.broadcast_json(log_event, topic="runs"))
+                logs = [log_event]  # Wrap single log event in list for API compatibility
+                loop.create_task(websocket_notifier.notify_run_logs(self.run_id, logs))
             except RuntimeError:
                 # No running event loop, run in thread
                 def run_broadcast():
                     try:
-                        asyncio.run(ws_manager.broadcast_json(log_event, topic="runs"))
+                        logs = [log_event]
+                        asyncio.run(websocket_notifier.notify_run_logs(self.run_id, logs))
                     except Exception:
                         pass
 

@@ -59,6 +59,7 @@ services:
       - ./datasets:/app/datasets
     environment:
       DASHBOARD_DB_URL: postgresql+psycopg2://dashboard:dashboard@db:5432/dashboard
+      DASHBOARD_URL: http://web:8000
       NVIDIA_VISIBLE_DEVICES: all
       PYTHONUNBUFFERED: "1"
       # Where datasets are mounted inside the container

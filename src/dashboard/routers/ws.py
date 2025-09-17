@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, HTTPException
+from pydantic import BaseModel
 
 
 @dataclass
@@ -73,3 +74,18 @@ async def websocket_endpoint(websocket: WebSocket, topic: str | None = Query(def
                 }))
     except WebSocketDisconnect:
         ws_manager.disconnect(client)
+
+
+class BroadcastRequest(BaseModel):
+    topic: str | None = None
+    payload: dict
+
+
+@router.post("/broadcast")
+async def broadcast_message(request: BroadcastRequest):
+    """API endpoint for external services to trigger WebSocket broadcasts."""
+    try:
+        await ws_manager.broadcast_json(request.payload, topic=request.topic)
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Broadcast failed: {str(e)}")
