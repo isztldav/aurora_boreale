@@ -91,8 +91,7 @@ class TrainingExecutor:
 
         cfg_dict = dict(cfg_row.config_json)
 
-        # Handle autocast dtype conversion
-        self._convert_autocast_dtype(cfg_dict)
+        # Note: autocast_dtype conversion is handled by TrainConfig validator
 
         # Fetch HF token from model registry if model uses one
         hf_token = self._get_hf_token_for_model(db, cfg_row.project_id, cfg_dict.get("model_flavour"))
@@ -111,16 +110,6 @@ class TrainingExecutor:
 
         return TrainConfig(**cfg_dict)
 
-    def _convert_autocast_dtype(self, cfg_dict: dict) -> None:
-        """Convert autocast dtype string to torch dtype if needed."""
-        try:
-            import torch
-            autocast_dtype = cfg_dict.get("autocast_dtype")
-            if isinstance(autocast_dtype, str) and autocast_dtype.startswith("torch."):
-                dtype_name = autocast_dtype.split(".", 1)[1]
-                cfg_dict["autocast_dtype"] = getattr(torch, dtype_name)
-        except Exception as e:
-            self.logger.warning("Failed to convert autocast dtype", extra={"dtype": cfg_dict.get("autocast_dtype"), "error": str(e)})
 
     def _sanitize_dataset_path(self, path: Optional[str]) -> str:
         """Sanitize and resolve dataset path under the datasets root."""
