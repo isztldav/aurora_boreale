@@ -11,12 +11,21 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install agent dependencies separately for better build caching
-COPY src/agent/requirements.txt /tmp/agent-requirements.txt
-
-# Use BuildKit cache for pip to speed up rebuilds
+# Install dependencies in layers for better caching
+# Layer 1: Core lightweight dependencies (change infrequently)
+COPY src/agent/requirements-base.txt /tmp/requirements-base.txt
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir -r /tmp/agent-requirements.txt
+    pip install --no-cache-dir -r /tmp/requirements-base.txt
+
+# Layer 2: PyTorch ecosystem (large, stable packages)
+COPY src/agent/requirements-pytorch.txt /tmp/requirements-pytorch.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir -r /tmp/requirements-pytorch.txt
+
+# Layer 3: ML and data processing dependencies (moderate size, change occasionally)
+COPY src/agent/requirements-ml.txt /tmp/requirements-ml.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir -r /tmp/requirements-ml.txt
 
 # The application code will be mounted at runtime via a volume in docker-compose
 

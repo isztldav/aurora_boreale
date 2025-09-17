@@ -1,0 +1,6 @@
+# PyTorch ecosystem - large packages that change infrequently
+# Keep at bottom with extra index for wheels
+--extra-index-url https://download.pytorch.org/whl/cu129
+torch
+torchvision
+kornia

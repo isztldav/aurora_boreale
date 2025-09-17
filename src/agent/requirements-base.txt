@@ -1,0 +1,9 @@
+# Core lightweight dependencies that change infrequently
+fastapi>=0.110
+python-multipart
+uvicorn[standard]>=0.23
+pydantic>=2.3
+SQLAlchemy>=2.0
+aiohttp>=3.8
+anyio>=3.6
+psycopg2-binary>=2.9

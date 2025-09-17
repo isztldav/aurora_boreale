@@ -1,0 +1,9 @@
+# ML and data processing dependencies
+numpy>=1.24
+tqdm>=4.66
+matplotlib>=3.7
+torchmetrics>=1.2
+transformers>=4.38
+huggingface-hub
+tensorboard>=2.14
+pillow>=9.4
