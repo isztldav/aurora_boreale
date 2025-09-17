@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from ..db import get_db
-from .. import models
-from ..schemas import ProjectCreate, ProjectUpdate, ProjectOut
+from shared.database.connection import get_db
+from shared.database import models
+from shared.database.schemas import ProjectCreate, ProjectUpdate, ProjectOut
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 

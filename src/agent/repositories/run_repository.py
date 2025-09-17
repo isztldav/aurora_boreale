@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional
 
-from dashboard.db import SessionLocal
-from dashboard import models
+from shared.database.connection import SessionLocal
+from shared.database import models
 
 from ..domain import RunContext
 

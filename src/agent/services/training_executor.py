@@ -7,10 +7,10 @@ from typing import Optional, Callable
 
 from huggingface_hub import login, logout
 
-from dashboard.db import SessionLocal
-from dashboard import models
-from common.config import TrainConfig
-from common import runner as train_runner
+from shared.database.connection import SessionLocal
+from shared.database import models
+from core.config import TrainConfig
+from core.training import runner as train_runner
 
 from ..domain import RunContext, TrainingProgress
 from .log_streamer import LogStreamer

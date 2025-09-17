@@ -1,0 +1,1 @@
+"""Pure utilities with no external dependencies."""

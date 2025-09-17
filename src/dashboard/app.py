@@ -3,10 +3,9 @@ from starlette.responses import RedirectResponse, JSONResponse
 from starlette.middleware.wsgi import WSGIMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
-from .db import init_db
+from shared.database.connection import init_db, SessionLocal
+from shared.database import models
 from .routers import projects, groups, configs, runs, agents, auth, datasets, registry_models, augmentations, registry, model_testing
-from .db import SessionLocal
-from . import models
 
 
 def create_app() -> FastAPI:

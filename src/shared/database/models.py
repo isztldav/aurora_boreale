@@ -7,7 +7,7 @@ import uuid
 from sqlalchemy import String, Integer, Boolean, ForeignKey, Text, JSON, Index, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .db import Base, GUID, TimestampMixin
+from .connection import Base, GUID, TimestampMixin
 
 
 class User(TimestampMixin, Base):

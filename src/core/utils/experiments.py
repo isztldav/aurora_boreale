@@ -6,7 +6,7 @@ and to keep experiment-related string handling in one place.
 from __future__ import annotations
 
 import os
-from common.config import TrainConfig
+from ..config import TrainConfig
 
 
 def sanitize_name(s: str) -> str:

@@ -2,9 +2,9 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ..db import get_db
-from .. import models
-from ..schemas import AgentCreate, AgentOut, GPUCreate, GPUOut
+from shared.database.connection import get_db
+from shared.database import models
+from shared.database.schemas import AgentCreate, AgentOut, GPUCreate, GPUOut
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 

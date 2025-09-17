@@ -11,7 +11,7 @@ import os
 # Add the src directory to the path so we can import common modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from common.registry import (
+from core.utils.registry import (
     get_registry_export,
     validate_gpu_augmentation_spec,
     validate_cpu_color_jitter_spec

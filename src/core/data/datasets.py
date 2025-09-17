@@ -9,7 +9,7 @@ from torchvision.io import read_image, ImageReadMode
 
 from collections import Counter
 
-from .config import TrainConfig
+from ..config import TrainConfig
 
 
 def collate_fn(batch):

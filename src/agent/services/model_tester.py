@@ -13,10 +13,10 @@ import torch.nn.functional as F
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 from huggingface_hub import login, logout
 
-from dashboard.db import SessionLocal
-from dashboard import models
-from common.config import TrainConfig
-from common.model import build_model
+from shared.database.connection import SessionLocal
+from shared.database import models
+from core.config import TrainConfig
+from core.training.model import build_model
 
 
 class ModelTester:

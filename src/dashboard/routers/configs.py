@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import hashlib
 
-from ..db import get_db
-from .. import models
-from ..schemas import TrainConfigCreate, TrainConfigOut, TrainConfigIn, TrainConfigUpdate
+from shared.database.connection import get_db
+from shared.database import models
+from shared.database.schemas import TrainConfigCreate, TrainConfigOut, TrainConfigIn, TrainConfigUpdate
 
 router = APIRouter(prefix="/configs", tags=["configs"])
 

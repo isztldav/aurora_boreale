@@ -17,18 +17,18 @@ from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 from transformers import get_cosine_schedule_with_warmup
 
-from common.checkpoint import save_model_checkpoints
-from common.config import TrainConfig, save_train_config
-from common.cuda_helper import CUDAPrefetchLoader
-from common.data import build_dataloaders, build_label_maps
-from common.losses import build_loss_function
-from common.model import build_model
-from common.optimizers import build_optimizer
-from common.seed import get_device, set_seed
-from common.tb import create_tb_writer, log_confusion_matrix_table
-from common.transforms import build_transforms
-from common.gpu_transforms import build_gpu_train_augment
-import common.train_eval as train_eval
+from core.utils.checkpoint import save_model_checkpoints
+from core.config import TrainConfig, save_train_config
+from core.utils.cuda_helper import CUDAPrefetchLoader
+from core.data.datasets import build_dataloaders, build_label_maps
+from core.utils.losses import build_loss_function
+from core.training.model import build_model
+from core.utils.optimizers import build_optimizer
+from core.utils.seed import get_device, set_seed
+from core.utils.tb import create_tb_writer, log_confusion_matrix_table
+from core.data.transforms import build_transforms
+from core.data.gpu_transforms import build_gpu_train_augment
+import core.training.train_eval as train_eval
 
 
 def _perform_checkpoint(

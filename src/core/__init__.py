@@ -1,0 +1,1 @@
+"""Core ML training logic - Pure ML functionality with no external dependencies."""

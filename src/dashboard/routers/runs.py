@@ -5,12 +5,12 @@ from urllib import request as _urlreq
 import json as _json
 from sqlalchemy.orm import Session
 
-from ..db import get_db
-from .. import models
-from ..schemas import RunCreate, RunOut
+from shared.database.connection import get_db
+from shared.database import models
+from shared.database.schemas import RunCreate, RunOut
 from .ws import ws_manager
 from ..utils import resolve_run_name
-from common.experiments import unique_run_name
+from core.utils.experiments import unique_run_name
 from ..tensorboard import get_embedded_url_path
 
 router = APIRouter(prefix="/runs", tags=["runs"])

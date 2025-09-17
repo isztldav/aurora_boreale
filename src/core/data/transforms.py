@@ -8,7 +8,7 @@ import torch
 from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 from transformers import AutoImageProcessor
-from .registry import cpu_color_presets, validate_cpu_color_jitter_spec
+from ..utils.registry import cpu_color_presets, validate_cpu_color_jitter_spec
 
 def _get_target_image_size(processor: AutoImageProcessor) -> int:
     size = getattr(processor, "size", None)

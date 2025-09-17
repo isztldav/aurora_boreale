@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from dashboard.db import get_db
-from dashboard import models
+from shared.database.connection import get_db
+from shared.database import models
 from agent.services.model_tester import ModelTester
 
 router = APIRouter(prefix="/model-testing", tags=["model-testing"])

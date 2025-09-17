@@ -7,9 +7,9 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from ..db import get_db
-from .. import models as orm
-from ..schemas import DatasetCreate, DatasetOut
+from shared.database.connection import get_db
+from shared.database import models as orm
+from shared.database.schemas import DatasetCreate, DatasetOut
 
 router = APIRouter(prefix="/projects", tags=["datasets"])
 browse_router = APIRouter(prefix="/datasets", tags=["datasets-browse"])

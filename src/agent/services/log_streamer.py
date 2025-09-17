@@ -6,8 +6,8 @@ from datetime import datetime, timezone
 from io import StringIO
 from typing import Optional, Callable
 
-from dashboard.db import SessionLocal
-from dashboard import models
+from shared.database.connection import SessionLocal
+from shared.database import models
 
 # Import WebSocket manager for real-time updates (optional)
 try:
