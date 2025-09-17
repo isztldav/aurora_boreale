@@ -158,8 +158,23 @@ class RunRepository:
     def _broadcast_run_update(self, run: models.Run) -> None:
         """Broadcast run state update via WebSocket."""
         try:
-            import anyio
-            anyio.from_thread.run(websocket_notifier.notify_run_update, run)
+            import asyncio
+            try:
+                # Try to get the current event loop
+                loop = asyncio.get_running_loop()
+                # Schedule the coroutine to run in the event loop
+                loop.create_task(websocket_notifier.notify_run_update(run))
+            except RuntimeError:
+                # No running event loop, run in a new thread
+                def run_broadcast():
+                    try:
+                        asyncio.run(websocket_notifier.notify_run_update(run))
+                    except Exception as e:
+                        print(f"[repository] Failed to notify WebSocket in background thread: {e}")
+
+                import threading
+                thread = threading.Thread(target=run_broadcast, daemon=True)
+                thread.start()
         except Exception as e:
             print(f"[repository] Failed to broadcast run update: {e}")
 

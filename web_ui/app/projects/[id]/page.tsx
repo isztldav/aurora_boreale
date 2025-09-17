@@ -52,8 +52,10 @@ export default function ProjectPage() {
 
   useEffect(() => {
     const ws = makeRunsWS((msg) => {
+      console.log('WebSocket message received:', msg) // Debug logging
       if (msg.type === 'run.updated' || msg.type === 'run.created') {
         const run: Run | undefined = msg.run
+        console.log('Run data from WebSocket:', run) // Debug logging
         if (run && run.project_id === projectId) {
           // Update the cache directly for more responsive UI
           qc.setQueryData(['runs', { projectId }], (oldData: Run[] | undefined) => {

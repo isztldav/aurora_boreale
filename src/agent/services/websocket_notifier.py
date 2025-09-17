@@ -49,7 +49,7 @@ class WebSocketNotifier:
 
     async def _send_notification(self, topic: str, payload: Dict[str, Any]) -> None:
         """Send notification to dashboard via HTTP API."""
-        url = f"{self.dashboard_url}/api/v1/ws/broadcast"
+        url = f"{self.dashboard_url}/api/v1/broadcast"
 
         request_payload = {
             "topic": topic,
@@ -74,14 +74,19 @@ class WebSocketNotifier:
             "state": run.state,
             "monitor_metric": run.monitor_metric,
             "monitor_mode": run.monitor_mode,
+            "best_value": run.best_value,
+            "epoch": run.epoch,
+            "step": run.step,
             "started_at": run.started_at.isoformat() if run.started_at else None,
             "finished_at": run.finished_at.isoformat() if run.finished_at else None,
-            "best_metric": run.best_metric,
-            "current_epoch": run.current_epoch,
-            "total_epochs": run.total_epochs,
             "agent_id": str(run.agent_id) if run.agent_id else None,
+            "docker_image": run.docker_image,
+            "seed": run.seed,
+            "log_dir": run.log_dir,
+            "ckpt_dir": run.ckpt_dir,
             "created_at": run.created_at.isoformat() if run.created_at else None,
             "updated_at": run.updated_at.isoformat() if run.updated_at else None,
+            "gpu_indices": run.gpu_indices or [],
         }
 
 

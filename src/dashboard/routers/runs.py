@@ -39,7 +39,7 @@ def get_run(run_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/from-config/{config_id}", response_model=RunOut)
-def create_run_from_config(config_id: str, payload: RunCreate, db: Session = Depends(get_db)):
+async def create_run_from_config(config_id: str, payload: RunCreate, db: Session = Depends(get_db)):
     cfg = db.query(models.TrainConfigModel).get(config_id)
     if not cfg:
         raise HTTPException(status_code=404, detail="Config not found")
@@ -119,8 +119,7 @@ def create_run_from_config(config_id: str, payload: RunCreate, db: Session = Dep
             "type": "run.created",
             "run": _serialize_run(run),
         }
-        import anyio
-        anyio.from_thread.run(ws_manager.broadcast_json, payload, topic="runs")
+        await ws_manager.broadcast_json(payload, topic="runs")
     except Exception as e:
         from shared.logging.config import get_logger
         logger = get_logger("dashboard.runs")
@@ -133,7 +132,7 @@ def create_run_from_config(config_id: str, payload: RunCreate, db: Session = Dep
 
 
 @router.post("/{run_id}/cancel")
-def cancel_run(run_id: str, db: Session = Depends(get_db)):
+async def cancel_run(run_id: str, db: Session = Depends(get_db)):
     run = db.query(models.Run).get(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Not found")
@@ -180,8 +179,7 @@ def cancel_run(run_id: str, db: Session = Depends(get_db)):
             "type": "run.updated",
             "run": _serialize_run(run),
         }
-        import anyio
-        anyio.from_thread.run(ws_manager.broadcast_json, payload, topic="runs")
+        await ws_manager.broadcast_json(payload, topic="runs")
     except Exception as e:
         from shared.logging.config import get_logger
         logger = get_logger("dashboard.runs")
@@ -195,7 +193,7 @@ def cancel_run(run_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/{run_id}/finish")
-def finish_run(run_id: str, success: bool = True, db: Session = Depends(get_db)):
+async def finish_run(run_id: str, success: bool = True, db: Session = Depends(get_db)):
     run = db.query(models.Run).get(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Not found")
@@ -241,8 +239,7 @@ def finish_run(run_id: str, success: bool = True, db: Session = Depends(get_db))
             "type": "run.updated",
             "run": _serialize_run(run),
         }
-        import anyio
-        anyio.from_thread.run(ws_manager.broadcast_json, payload, topic="runs")
+        await ws_manager.broadcast_json(payload, topic="runs")
     except Exception as e:
         from shared.logging.config import get_logger
         logger = get_logger("dashboard.runs")
