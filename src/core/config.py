@@ -27,7 +27,7 @@ class TrainConfig(BaseModel):
 
     # HF model weights
     load_pretrained: bool = True
-    hf_token: Optional[str] = None  # HuggingFace token used for private models
+    hf_token: Optional[bool] = False  # Whether HuggingFace token is required (token retrieved from model registry)
 
     # Logging
     run_name: Optional[str] = None

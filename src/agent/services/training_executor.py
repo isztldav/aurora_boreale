@@ -104,7 +104,7 @@ class TrainingExecutor:
             "tb_root": run_context.log_dir,
             "ckpt_dir": run_context.ckpt_dir,
             "root": self._sanitize_dataset_path(cfg_dict.get("root")),
-            "hf_token": True if hf_token else False,  # Add HF token for model loading
+            "hf_token": bool(hf_token),  # Boolean flag indicating if HF token was used
         })
 
         return TrainConfig(**cfg_dict)
