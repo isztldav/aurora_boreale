@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
+import { ConfigInspectDialog } from '@/components/projects/config-inspect-dialog'
 
 export default function ProjectConfigsPage() {
   const params = useParams<{ id: string }>()
@@ -34,6 +35,9 @@ export default function ProjectConfigsPage() {
 
   // State for delete dialog
   const [deleteConfigId, setDeleteConfigId] = useState<string | null>(null)
+
+  // State for inspect dialog
+  const [inspectConfigId, setInspectConfigId] = useState<string | null>(null)
 
   return (
     <Shell>
@@ -59,7 +63,14 @@ export default function ProjectConfigsPage() {
                 <TBody>
                   {data?.map((c) => (
                     <TR key={c.id}>
-                      <TD className="font-medium">{c.name}</TD>
+                      <TD className="font-medium">
+                        <button
+                          onClick={() => setInspectConfigId(c.id)}
+                          className="hover:underline cursor-pointer"
+                        >
+                          {c.name}
+                        </button>
+                      </TD>
                       <TD>{c.version}</TD>
                       <TD>{c.status}</TD>
                       <TD className="text-right">
@@ -112,6 +123,12 @@ export default function ProjectConfigsPage() {
           configId={deleteConfigId}
           projectId={projectId}
           onOpenChange={(v: boolean) => !v && setDeleteConfigId(null)}
+        />
+
+        {/* Inspect Dialog */}
+        <ConfigInspectDialog
+          configId={inspectConfigId}
+          onOpenChange={(v: boolean) => !v && setInspectConfigId(null)}
         />
       </div>
     </Shell>
@@ -1101,3 +1118,4 @@ function DeleteConfigDialog({ configId, projectId, onOpenChange }: { configId: s
     </Dialog>
   )
 }
+
