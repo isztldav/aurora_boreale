@@ -461,11 +461,15 @@ def get_runs_by_tag(
         tag_ids.extend([d.id for d in descendants])
 
     # Get runs associated with these tags
-    runs = db.query(models.Run).join(
-        models.TrainingRunTag,
-        models.Run.id == models.TrainingRunTag.training_run_id
-    ).filter(
+    # Use subquery to get unique run IDs to avoid issues with JSON columns in DISTINCT
+    run_ids_subquery = db.query(models.TrainingRunTag.training_run_id).filter(
         models.TrainingRunTag.tag_id.in_(tag_ids)
-    ).distinct().order_by(models.Run.created_at.desc()).all()
+    ).distinct().subquery()
+
+    runs = db.query(models.Run).filter(
+        models.Run.id.in_(
+            db.query(run_ids_subquery.c.training_run_id)
+        )
+    ).order_by(models.Run.created_at.desc()).all()
 
     return runs
