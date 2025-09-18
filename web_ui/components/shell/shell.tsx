@@ -189,7 +189,7 @@ function AppSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <NavLink
-                    href="/training-runs/by-tags"
+                    href="/tags"
                     label="Tags"
                     icon={<Tag className="h-4 w-4" />}
                   />
@@ -292,7 +292,7 @@ function MobileNav() {
                 icon={<Users className="h-4 w-4" />}
               />
               <NavLink
-                href="/training-runs/by-tags"
+                href="/tags"
                 label="Tags"
                 icon={<Tag className="h-4 w-4" />}
               />

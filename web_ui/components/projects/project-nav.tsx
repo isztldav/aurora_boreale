@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 
 type Props = {
   projectId: string
-  current: 'overview' | 'configs' | 'datasets' | 'models'
+  current: 'overview' | 'configs' | 'datasets' | 'models' | 'tags'
 }
 
 export function ProjectNav({ projectId, current }: Props) {
@@ -13,6 +13,7 @@ export function ProjectNav({ projectId, current }: Props) {
     { key: 'configs', href: `${base}/configs`, label: 'Configs' },
     { key: 'datasets', href: `${base}/datasets`, label: 'Datasets' },
     { key: 'models', href: `${base}/models`, label: 'Models' },
+    { key: 'tags', href: `${base}/tags`, label: 'Tags' },
   ] as const
   return (
     <div className="flex items-center gap-4 border-b mb-6">
