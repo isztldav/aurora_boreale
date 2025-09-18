@@ -20,7 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { ConfigInspectDialog } from '@/components/projects/config-inspect-dialog'
-import { ConfigForm } from '@/components/projects/config-form'
+import { DynamicConfigForm } from '@/components/projects/dynamic-config-form'
 import { QueueRunDialog } from '@/components/projects/queue-run-dialog'
 import { DeleteConfigDialog } from '@/components/projects/delete-config-dialog'
 
@@ -111,7 +111,7 @@ export default function ProjectConfigsPage() {
         </div>
 
         {/* Config Form (New/Edit) */}
-        <ConfigForm
+        <DynamicConfigForm
           projectId={projectId}
           editConfigId={editConfigId}
           cloneConfigId={cloneConfigId}
