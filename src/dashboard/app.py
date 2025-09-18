@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from shared.logging.config import setup_logging, configure_uvicorn_logging
 from shared.database.connection import init_db, SessionLocal
 from shared.database import models
-from .routers import projects, groups, configs, runs, agents, auth, datasets, registry_models, augmentations, registry, model_testing
+from .routers import projects, groups, configs, runs, agents, auth, datasets, registry_models, augmentations, registry, model_testing, tags
 
 
 def create_app() -> FastAPI:
@@ -52,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(augmentations.router, prefix="/api/v1")
     app.include_router(registry.router, prefix="/api/v1")
     app.include_router(model_testing.router, prefix="/api/v1")
+    app.include_router(tags.router, prefix="/api/v1")
     from .routers import tensorboard as tb_router
     app.include_router(tb_router.router, prefix="/api/v1")
     # WebSocket endpoint for live updates

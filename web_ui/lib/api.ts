@@ -130,6 +130,24 @@ export type Model = {
   updated_at: string
 }
 
+export type Tag = {
+  id: string
+  name: string
+  parent_id?: string | null
+  path: string
+  level: number
+  created_at: string
+  updated_at: string
+}
+
+export type TagWithChildren = Tag & {
+  children: TagWithChildren[]
+}
+
+export type RunWithTags = Run & {
+  tags: Tag[]
+}
+
 export const api = {
   projects: {
     list: () => http<Project[]>(`/projects`),
@@ -213,6 +231,7 @@ export const api = {
   },
 }
 
+// Extended API for specific use cases
 export const apiEx = {
   configs: {
     list: (projectId: string) => http<any[]>(`/configs/project/${projectId}`),
@@ -230,7 +249,7 @@ export const apiEx = {
     }) => http(`/configs/${configId}`, { method: 'PUT', body: JSON.stringify(payload) }),
     delete: (configId: string) => http(`/configs/${configId}`, { method: 'DELETE' }),
     queueRun: (configId: string, payload: { agent_id?: string; gpu_indices?: number[]; docker_image?: string; env?: any; priority?: number } = {}) =>
-      http(`/runs/from-config/${configId}`, { method: 'POST', body: JSON.stringify(payload) }),
+      http<{ id: string }>(`/runs/from-config/${configId}`, { method: 'POST', body: JSON.stringify(payload) }),
   },
   models: {
     list: (projectId: string) => http<Model[]>(`/projects/${projectId}/models`),
@@ -260,6 +279,42 @@ export const apiEx = {
       return http<any[]>(`/datasets/sample-images?${searchParams.toString()}`)
     },
     serveImage: (path: string) => `/api/v1/datasets/serve-image?path=${encodeURIComponent(path)}`,
+  },
+  tags: {
+    // Tag hierarchy management
+    list: () => http<Tag[]>(`/tags`),
+    tree: () => http<TagWithChildren[]>(`/tags/tree`),
+    get: (tagId: string) => http<Tag>(`/tags/${tagId}`),
+    create: (payload: { name: string; parent_id?: string }) =>
+      http<Tag>(`/tags`, { method: 'POST', body: JSON.stringify(payload) }),
+    update: (tagId: string, payload: { name: string }) =>
+      http<Tag>(`/tags/${tagId}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    delete: (tagId: string, preserveChildren = false) =>
+      http<{ message: string }>(`/tags/${tagId}?preserve_children=${preserveChildren}`, { method: 'DELETE' }),
+    promote: (tagId: string) =>
+      http<Tag>(`/tags/${tagId}/promote`, { method: 'PUT' }),
+    move: (tagId: string, newParentId?: string) =>
+      http<Tag>(`/tags/${tagId}/move`, { method: 'PUT', body: JSON.stringify({ new_parent_id: newParentId }) }),
+
+    // Tag ancestry and descendants
+    ancestry: (tagId: string) => http<{ tags: Tag[] }>(`/tags/${tagId}/ancestry`),
+    descendants: (tagId: string) => http<Tag[]>(`/tags/${tagId}/descendants`),
+    stats: (tagId: string) => http<{
+      tag_id: string;
+      tag_name: string;
+      direct_runs: number;
+      total_runs: number;
+    }>(`/tags/${tagId}/stats`),
+
+    // Training run tag management
+    assignToRun: (runId: string, tagIds: string[]) =>
+      http<RunWithTags>(`/tags/training-runs/${runId}/tags`, {
+        method: 'PUT',
+        body: JSON.stringify({ tag_ids: tagIds })
+      }),
+    getRunTags: (runId: string) => http<Tag[]>(`/tags/training-runs/${runId}/tags`),
+    getRunsByTag: (tagId: string, includeDescendants = true) =>
+      http<Run[]>(`/tags/runs-by-tag/${tagId}?include_descendants=${includeDescendants}`),
   },
   tensorboard: {
     heartbeat: (runId: string) => http(`/tensorboard/heartbeat`, { method: 'POST', body: JSON.stringify({ run_id: runId }) }),

@@ -253,3 +253,57 @@ class AugmentationOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# Tags
+class TagCreate(BaseModel):
+    name: str
+    parent_id: Optional[UUID] = None
+
+
+class TagUpdate(BaseModel):
+    name: Optional[str] = None
+
+
+class TagMove(BaseModel):
+    new_parent_id: Optional[UUID] = None
+
+
+class TagOut(BaseModel):
+    id: UUID
+    name: str
+    parent_id: Optional[UUID]
+    path: str
+    level: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TagWithChildren(TagOut):
+    children: List["TagWithChildren"] = []
+
+# Update forward references
+TagWithChildren.model_rebuild()
+
+
+class TagAncestry(BaseModel):
+    tags: List[TagOut]
+
+
+class TagStats(BaseModel):
+    tag_id: UUID
+    tag_name: str
+    direct_runs: int
+    total_runs: int  # including descendant tags
+
+
+# Training Run Tags
+class RunTagAssignment(BaseModel):
+    tag_ids: List[UUID]
+
+
+class RunWithTags(RunOut):
+    tags: List[TagOut] = []

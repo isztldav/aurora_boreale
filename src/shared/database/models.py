@@ -88,6 +88,9 @@ class Run(TimestampMixin, Base):
     ckpt_dir: Mapped[Optional[str]] = mapped_column(String(512))
     gpu_indices: Mapped[Optional[list[int]]] = mapped_column(JSON)
 
+    # Many-to-many relationship with tags
+    tags: Mapped[list["Tag"]] = relationship("Tag", secondary="training_run_tags", back_populates="runs")
+
 
 class Job(TimestampMixin, Base):
     __tablename__ = "jobs"
@@ -197,4 +200,42 @@ class RunLog(TimestampMixin, Base):
 
     __table_args__ = (
         Index("ix_run_logs_run_timestamp", "run_id", "timestamp"),
+    )
+
+
+class Tag(TimestampMixin, Base):
+    __tablename__ = "tags"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    parent_id: Mapped[Optional[uuid.UUID]] = mapped_column(GUID(), ForeignKey("tags.id", ondelete="CASCADE"))
+    path: Mapped[str] = mapped_column(String(2048), nullable=False)  # Materialized path for efficient queries
+    level: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Self-referential relationship for hierarchy
+    parent: Mapped[Optional[Tag]] = relationship("Tag", remote_side=[id], back_populates="children")
+    children: Mapped[list[Tag]] = relationship("Tag", back_populates="parent", cascade="all, delete-orphan")
+
+    # Many-to-many relationship with training runs
+    runs: Mapped[list[Run]] = relationship("Run", secondary="training_run_tags", back_populates="tags")
+
+    __table_args__ = (
+        Index("ix_tags_parent_id", "parent_id"),
+        Index("ix_tags_path", "path"),
+        Index("ix_tags_level", "level"),
+        Index("ix_tags_name", "name"),
+        UniqueConstraint("name", "parent_id", name="uq_tags_name_parent"),  # Unique name within parent
+    )
+
+
+class TrainingRunTag(Base):
+    __tablename__ = "training_run_tags"
+
+    training_run_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("runs.id", ondelete="CASCADE"), primary_key=True)
+    tag_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_training_run_tags_run_id", "training_run_id"),
+        Index("ix_training_run_tags_tag_id", "tag_id"),
     )

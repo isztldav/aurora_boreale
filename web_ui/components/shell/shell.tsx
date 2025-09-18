@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { CommandPalette, useCommandPalette } from '@/components/command-palette'
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from '@/components/ui/sheet'
-import { LayoutDashboard, Users, Settings, Plus, Menu } from 'lucide-react'
+import { LayoutDashboard, Users, Settings, Plus, Menu, Tag } from 'lucide-react'
 
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -186,6 +186,15 @@ function AppSidebar() {
                   />
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    href="/training-runs/by-tags"
+                    label="Tags"
+                    icon={<Tag className="h-4 w-4" />}
+                  />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -281,6 +290,11 @@ function MobileNav() {
                 href="/agents"
                 label="Agents"
                 icon={<Users className="h-4 w-4" />}
+              />
+              <NavLink
+                href="/training-runs/by-tags"
+                label="Tags"
+                icon={<Tag className="h-4 w-4" />}
               />
             </div>
           </div>

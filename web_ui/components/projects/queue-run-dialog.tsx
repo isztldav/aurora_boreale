@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
+import { TagSelector } from '@/components/tags/tag-selector'
 import { toast } from 'sonner'
 
 interface QueueRunDialogProps {
@@ -25,15 +26,41 @@ export function QueueRunDialog({ projectId, configId }: QueueRunDialogProps) {
   const [gpuSel, setGpuSel] = useState<Record<number, boolean>>({})
   const [docker, setDocker] = useState<string>('')
   const [priority, setPriority] = useState<number>(0)
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+
+  // Fetch available tags
+  const { data: tags = [] } = useQuery({
+    queryKey: ['tags'],
+    queryFn: () => apiEx.tags.list()
+  })
 
   const toggleGpu = (idx: number, v: boolean) => setGpuSel((s) => ({ ...s, [idx]: v }))
   const selected = Object.entries(gpuSel).filter(([, v]) => v).map(([k]) => Number(k))
 
   const submit = async () => {
     try {
-      await apiEx.configs.queueRun(configId, { agent_id: agentId, gpu_indices: selected, docker_image: docker || undefined, priority })
+      // Queue the run
+      const runResult = await apiEx.configs.queueRun(configId, {
+        agent_id: agentId,
+        gpu_indices: selected,
+        docker_image: docker || undefined,
+        priority
+      })
+
+      // Assign tags to the created run if any were selected
+      if (selectedTags.length > 0 && runResult?.id) {
+        try {
+          await apiEx.tags.assignToRun(runResult.id, selectedTags)
+        } catch (tagError) {
+          console.warn('Failed to assign tags to run:', tagError)
+          // Don't fail the whole operation if tag assignment fails
+          toast.warning('Run queued but failed to assign tags')
+        }
+      }
+
       setOpen(false)
       setGpuSel({})
+      setSelectedTags([])
       await qc.invalidateQueries({ queryKey: ['runs', { projectId }] })
       toast.success('Run queued')
     } catch (e: any) {
@@ -78,6 +105,16 @@ export function QueueRunDialog({ projectId, configId }: QueueRunDialogProps) {
               <Label>Priority</Label>
               <Input type="number" value={priority} onChange={(e) => setPriority(Number(e.target.value))} />
             </div>
+          </div>
+          <div>
+            <Label>Tags (optional)</Label>
+            <TagSelector
+              tags={tags}
+              selectedTagIds={selectedTags}
+              onSelectionChange={setSelectedTags}
+              placeholder="Select tags for this run..."
+              maxTags={5}
+            />
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
