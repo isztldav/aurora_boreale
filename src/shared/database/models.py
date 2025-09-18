@@ -207,10 +207,14 @@ class Tag(TimestampMixin, Base):
     __tablename__ = "tags"
 
     id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("projects.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     parent_id: Mapped[Optional[uuid.UUID]] = mapped_column(GUID(), ForeignKey("tags.id", ondelete="CASCADE"))
     path: Mapped[str] = mapped_column(String(2048), nullable=False)  # Materialized path for efficient queries
     level: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Relationship to project
+    project: Mapped[Project] = relationship("Project")
 
     # Self-referential relationship for hierarchy
     parent: Mapped[Optional[Tag]] = relationship("Tag", remote_side=[id], back_populates="children")
@@ -220,11 +224,13 @@ class Tag(TimestampMixin, Base):
     runs: Mapped[list[Run]] = relationship("Run", secondary="training_run_tags", back_populates="tags")
 
     __table_args__ = (
+        Index("ix_tags_project_id", "project_id"),
         Index("ix_tags_parent_id", "parent_id"),
         Index("ix_tags_path", "path"),
         Index("ix_tags_level", "level"),
         Index("ix_tags_name", "name"),
-        UniqueConstraint("name", "parent_id", name="uq_tags_name_parent"),  # Unique name within parent
+        Index("ix_tags_project_parent", "project_id", "parent_id"),
+        UniqueConstraint("project_id", "name", "parent_id", name="uq_tags_project_name_parent"),  # Unique name within parent and project
     )
 
 

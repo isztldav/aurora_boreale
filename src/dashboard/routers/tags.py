@@ -67,24 +67,36 @@ def _check_circular_reference(db: Session, tag_id: UUID, new_parent_id: UUID) ->
 @router.post("", response_model=TagOut)
 async def create_tag(tag_data: TagCreate, db: Session = Depends(get_db)):
     """Create a new tag"""
+    # Verify project exists
+    project = db.query(models.Project).filter(models.Project.id == tag_data.project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
     parent = None
     if tag_data.parent_id:
-        parent = db.query(models.Tag).filter(models.Tag.id == tag_data.parent_id).first()
+        parent = db.query(models.Tag).filter(
+            and_(
+                models.Tag.id == tag_data.parent_id,
+                models.Tag.project_id == tag_data.project_id
+            )
+        ).first()
         if not parent:
-            raise HTTPException(status_code=404, detail="Parent tag not found")
+            raise HTTPException(status_code=404, detail="Parent tag not found in this project")
 
-    # Check for duplicate name under same parent
+    # Check for duplicate name under same parent and project
     existing = db.query(models.Tag).filter(
         and_(
+            models.Tag.project_id == tag_data.project_id,
             models.Tag.name == tag_data.name,
             models.Tag.parent_id == tag_data.parent_id
         )
     ).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Tag name already exists under this parent")
+        raise HTTPException(status_code=400, detail="Tag name already exists under this parent in this project")
 
     # Create new tag
     tag = models.Tag(
+        project_id=tag_data.project_id,
         name=tag_data.name,
         parent_id=tag_data.parent_id,
         path=_calculate_materialized_path(parent, tag_data.name),
@@ -102,10 +114,61 @@ async def create_tag(tag_data: TagCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/tree", response_model=List[TagWithChildren])
-def get_tag_tree(db: Session = Depends(get_db)):
-    """Get the complete tag hierarchy as a tree"""
+def get_tag_tree(project_id: Optional[UUID] = Query(None), db: Session = Depends(get_db)):
+    """Get the complete tag hierarchy as a tree, optionally filtered by project"""
+    query = db.query(models.Tag)
+
+    if project_id:
+        query = query.filter(models.Tag.project_id == project_id)
+
     # Get all tags ordered by path for proper tree building
-    all_tags = db.query(models.Tag).order_by(models.Tag.path).all()
+    all_tags = query.order_by(models.Tag.path).all()
+
+    # Build tree structure
+    tag_map = {}
+    root_tags = []
+
+    for tag in all_tags:
+        tag_dict = TagWithChildren.model_validate(tag).model_dump()
+        tag_dict["children"] = []
+        tag_map[tag.id] = tag_dict
+
+        if tag.parent_id is None:
+            root_tags.append(tag_dict)
+        else:
+            if tag.parent_id in tag_map:
+                tag_map[tag.parent_id]["children"].append(tag_dict)
+
+    return root_tags
+
+
+@router.get("/project/{project_id}", response_model=List[TagOut])
+def get_project_tags(project_id: UUID, db: Session = Depends(get_db)):
+    """Get all tags for a specific project"""
+    # Verify project exists
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    tags = db.query(models.Tag).filter(
+        models.Tag.project_id == project_id
+    ).order_by(models.Tag.path).all()
+
+    return tags
+
+
+@router.get("/project/{project_id}/tree", response_model=List[TagWithChildren])
+def get_project_tag_tree(project_id: UUID, db: Session = Depends(get_db)):
+    """Get the tag hierarchy tree for a specific project"""
+    # Verify project exists
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Get all tags for this project ordered by path for proper tree building
+    all_tags = db.query(models.Tag).filter(
+        models.Tag.project_id == project_id
+    ).order_by(models.Tag.path).all()
 
     # Build tree structure
     tag_map = {}
@@ -266,20 +329,26 @@ async def move_tag(tag_id: UUID, move_data: TagMove, db: Session = Depends(get_d
     # Get new parent if specified
     new_parent = None
     if move_data.new_parent_id:
-        new_parent = db.query(models.Tag).filter(models.Tag.id == move_data.new_parent_id).first()
+        new_parent = db.query(models.Tag).filter(
+            and_(
+                models.Tag.id == move_data.new_parent_id,
+                models.Tag.project_id == tag.project_id
+            )
+        ).first()
         if not new_parent:
-            raise HTTPException(status_code=404, detail="New parent tag not found")
+            raise HTTPException(status_code=404, detail="New parent tag not found in this project")
 
-    # Check for duplicate name under new parent
+    # Check for duplicate name under new parent within the same project
     existing = db.query(models.Tag).filter(
         and_(
+            models.Tag.project_id == tag.project_id,
             models.Tag.name == tag.name,
             models.Tag.parent_id == move_data.new_parent_id,
             models.Tag.id != tag_id
         )
     ).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Tag name already exists under new parent")
+        raise HTTPException(status_code=400, detail="Tag name already exists under new parent in this project")
 
     # Store old path for updating descendants
     old_path = tag.path

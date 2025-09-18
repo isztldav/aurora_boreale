@@ -257,6 +257,7 @@ class AugmentationOut(BaseModel):
 
 # Tags
 class TagCreate(BaseModel):
+    project_id: UUID
     name: str
     parent_id: Optional[UUID] = None
 
@@ -271,6 +272,7 @@ class TagMove(BaseModel):
 
 class TagOut(BaseModel):
     id: UUID
+    project_id: UUID
     name: str
     parent_id: Optional[UUID]
     path: str

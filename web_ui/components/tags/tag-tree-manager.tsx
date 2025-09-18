@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator"
 // Types for the tag tree
 export interface TagNode {
   id: string
+  project_id: string
   name: string
   parent_id?: string | null
   path: string
@@ -29,6 +30,7 @@ export interface TagNode {
 
 interface TagTreeManagerProps {
   tags: TagNode[]
+  projectId?: string
   onCreateTag: (name: string, parentId?: string) => Promise<void>
   onUpdateTag: (id: string, name: string) => Promise<void>
   onDeleteTag: (id: string, preserveChildren: boolean) => Promise<void>

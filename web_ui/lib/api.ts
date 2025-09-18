@@ -132,6 +132,7 @@ export type Model = {
 
 export type Tag = {
   id: string
+  project_id: string
   name: string
   parent_id?: string | null
   path: string
@@ -283,9 +284,9 @@ export const apiEx = {
   tags: {
     // Tag hierarchy management
     list: () => http<Tag[]>(`/tags`),
-    tree: () => http<TagWithChildren[]>(`/tags/tree`),
+    tree: (projectId?: string) => http<TagWithChildren[]>(`/tags/tree${projectId ? `?project_id=${projectId}` : ''}`),
     get: (tagId: string) => http<Tag>(`/tags/${tagId}`),
-    create: (payload: { name: string; parent_id?: string }) =>
+    create: (payload: { project_id: string; name: string; parent_id?: string }) =>
       http<Tag>(`/tags`, { method: 'POST', body: JSON.stringify(payload) }),
     update: (tagId: string, payload: { name: string }) =>
       http<Tag>(`/tags/${tagId}`, { method: 'PUT', body: JSON.stringify(payload) }),
@@ -295,6 +296,10 @@ export const apiEx = {
       http<Tag>(`/tags/${tagId}/promote`, { method: 'PUT' }),
     move: (tagId: string, newParentId?: string) =>
       http<Tag>(`/tags/${tagId}/move`, { method: 'PUT', body: JSON.stringify({ new_parent_id: newParentId }) }),
+
+    // Project-specific tag operations
+    getProjectTags: (projectId: string) => http<Tag[]>(`/tags/project/${projectId}`),
+    getProjectTagTree: (projectId: string) => http<TagWithChildren[]>(`/tags/project/${projectId}/tree`),
 
     // Tag ancestry and descendants
     ancestry: (tagId: string) => http<{ tags: Tag[] }>(`/tags/${tagId}/ancestry`),

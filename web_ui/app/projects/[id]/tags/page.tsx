@@ -21,8 +21,8 @@ import { RunStateBadge } from "@/components/projects/run-state-badge"
 import { apiEx } from "@/lib/api"
 
 // API functions using the real API client
-const fetchTags = async (): Promise<TagWithStats[]> => {
-  const tags = await apiEx.tags.tree()
+const fetchTags = async (projectId: string): Promise<TagWithStats[]> => {
+  const tags = await apiEx.tags.getProjectTagTree(projectId)
 
   const mapTagToStats = (tag: any): TagWithStats => ({
     ...tag,
@@ -299,7 +299,7 @@ export default function ProjectTagsPage() {
   // Fetch tags with stats
   const { data: tags = [], isLoading: tagsLoading } = useQuery({
     queryKey: ['tags-with-stats', projectId],
-    queryFn: fetchTags,
+    queryFn: () => fetchTags(projectId),
   })
 
   // Fetch runs for selected tag or all project runs

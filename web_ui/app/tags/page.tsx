@@ -19,8 +19,8 @@ const fetchTags = async (): Promise<TagNode[]> => {
   return tags as TagNode[]
 }
 
-const createTag = async (name: string, parentId?: string): Promise<TagNode> => {
-  const tag = await apiEx.tags.create({ name, parent_id: parentId })
+const createTag = async (name: string, projectId: string, parentId?: string): Promise<TagNode> => {
+  const tag = await apiEx.tags.create({ project_id: projectId, name, parent_id: parentId })
   return { ...tag, children: [] } as TagNode
 }
 
