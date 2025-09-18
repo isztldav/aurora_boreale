@@ -31,7 +31,8 @@ export interface TagNode {
 interface TagTreeManagerProps {
   tags: TagNode[]
   projectId?: string
-  onCreateTag: (name: string, parentId?: string) => Promise<void>
+  projects?: Array<{ id: string; name: string }> // For project selection when not in project context
+  onCreateTag: (name: string, projectId: string, parentId?: string) => Promise<void>
   onUpdateTag: (id: string, name: string) => Promise<void>
   onDeleteTag: (id: string, preserveChildren: boolean) => Promise<void>
   onPromoteTag: (id: string) => Promise<void>
@@ -168,6 +169,8 @@ const TagTreeItem: React.FC<{
 
 export const TagTreeManager: React.FC<TagTreeManagerProps> = ({
   tags,
+  projectId,
+  projects,
   onCreateTag,
   onUpdateTag,
   onDeleteTag,
@@ -177,7 +180,7 @@ export const TagTreeManager: React.FC<TagTreeManagerProps> = ({
 }) => {
   const [dialogState, setDialogState] = useState<TagDialogState>({ type: null })
   const [deleteState, setDeleteState] = useState<DeleteDialogState>({ isOpen: false })
-  const [formData, setFormData] = useState({ name: '', parentId: '' })
+  const [formData, setFormData] = useState({ name: '', parentId: '', projectId: projectId || '' })
 
   const flattenTags = useCallback((tags: TagNode[]): TagNode[] => {
     const result: TagNode[] = []
@@ -197,15 +200,15 @@ export const TagTreeManager: React.FC<TagTreeManagerProps> = ({
 
     switch (action) {
       case 'create':
-        setFormData({ name: '', parentId: data?.parentId || tagId })
+        setFormData({ name: '', parentId: data?.parentId || tagId, projectId: projectId || '' })
         setDialogState({ type: 'create', parentId: data?.parentId || tagId })
         break
       case 'edit':
-        setFormData({ name: tag.name, parentId: '' })
+        setFormData({ name: tag.name, parentId: '', projectId: tag.project_id })
         setDialogState({ type: 'edit', tagId, currentName: tag.name })
         break
       case 'move':
-        setFormData({ name: '', parentId: tag.parent_id || '' })
+        setFormData({ name: '', parentId: tag.parent_id || '', projectId: tag.project_id })
         setDialogState({ type: 'move', tagId })
         break
       case 'promote':
@@ -228,7 +231,7 @@ export const TagTreeManager: React.FC<TagTreeManagerProps> = ({
     try {
       switch (dialogState.type) {
         case 'create':
-          await onCreateTag(formData.name, formData.parentId || undefined)
+          await onCreateTag(formData.name, formData.projectId, formData.parentId || undefined)
           break
         case 'edit':
           if (dialogState.tagId) {
@@ -242,7 +245,7 @@ export const TagTreeManager: React.FC<TagTreeManagerProps> = ({
           break
       }
       setDialogState({ type: null })
-      setFormData({ name: '', parentId: '' })
+      setFormData({ name: '', parentId: '', projectId: projectId || '' })
     } catch (error) {
       console.error('Tag operation failed:', error)
     }
@@ -267,7 +270,7 @@ export const TagTreeManager: React.FC<TagTreeManagerProps> = ({
         <h3 className="text-lg font-semibold">Tag Management</h3>
         <Button
           onClick={() => {
-            setFormData({ name: '', parentId: '' })
+            setFormData({ name: '', parentId: '', projectId: projectId || '' })
             setDialogState({ type: 'create' })
           }}
           size="sm"
@@ -316,6 +319,27 @@ export const TagTreeManager: React.FC<TagTreeManagerProps> = ({
           </DialogDescription>
 
           <form onSubmit={handleDialogSubmit} className="space-y-4">
+            {/* Project selector - only show when not in project context or when creating root level tags */}
+            {dialogState.type === 'create' && !projectId && projects && projects.length > 0 && (
+              <div>
+                <Label htmlFor="projectSelect">Project</Label>
+                <select
+                  id="projectSelect"
+                  value={formData.projectId}
+                  onChange={(e) => setFormData(prev => ({ ...prev, projectId: e.target.value }))}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  required
+                >
+                  <option value="">Select a project</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {dialogState.type !== 'move' && (
               <div>
                 <Label htmlFor="tagName">Tag Name</Label>

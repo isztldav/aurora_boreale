@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { TagTreeManager, TagNode } from "@/components/tags/tag-tree-manager"
 import { Tag, BarChart3, Settings, TrendingUp } from "lucide-react"
 import { toast } from "sonner"
-import { apiEx } from "@/lib/api"
+import { api, apiEx } from "@/lib/api"
 
 // API functions using the real API client
 const fetchTags = async (): Promise<TagNode[]> => {
@@ -121,10 +121,19 @@ export default function TagsPage() {
     queryFn: fetchTagStats,
   })
 
+  // Fetch projects for project selection
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => {
+      const response = await api.projects.list()
+      return response.map(p => ({ id: p.id, name: p.name }))
+    },
+  })
+
   // Mutations for tag operations
   const createTagMutation = useMutation({
-    mutationFn: ({ name, parentId }: { name: string; parentId?: string }) =>
-      createTag(name, parentId),
+    mutationFn: ({ name, projectId, parentId }: { name: string; projectId: string; parentId?: string }) =>
+      createTag(name, projectId, parentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tags'] })
       queryClient.invalidateQueries({ queryKey: ['tag-stats'] })
@@ -183,8 +192,8 @@ export default function TagsPage() {
     },
   })
 
-  const handleCreateTag = async (name: string, parentId?: string) => {
-    await createTagMutation.mutateAsync({ name, parentId })
+  const handleCreateTag = async (name: string, projectId: string, parentId?: string) => {
+    await createTagMutation.mutateAsync({ name, projectId, parentId })
   }
 
   const handleUpdateTag = async (id: string, name: string) => {
@@ -299,6 +308,7 @@ export default function TagsPage() {
                 ) : (
                   <TagTreeManager
                     tags={tags}
+                    projects={projects}
                     onCreateTag={handleCreateTag}
                     onUpdateTag={handleUpdateTag}
                     onDeleteTag={handleDeleteTag}
