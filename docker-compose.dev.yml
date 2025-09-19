@@ -5,10 +5,11 @@ services:
   
   web:
     command: >
-      bash -lc "uvicorn src.dashboard.app:app --host 0.0.0.0 --port 8000 --reload \
+      bash -lc "uvicorn src.dashboard.app:create_app --host 0.0.0.0 --port 8000 --reload \
       --reload-dir /app/src \
       --reload-include '*.py' \
-      --log-level debug"
+      --factory \
+      --log-config=null"
     environment:
       DASHBOARD_DEBUG: "1"
       # Development logging configuration
@@ -16,12 +17,13 @@ services:
       LOG_DIR: "/app/logs"
 
   agent:
-    # Enable code reload using uvicorn factory; pass GPU index via env
-    command: bash -lc "uvicorn agent.server:create_app --host 0.0.0.0 --port 7070 --reload --factory"
+    # Enable code reload in development mode
+    command: bash -lc "python -m agent --gpu-index $$GPU_INDEX --reload"
     environment:
       # Development logging configuration
       LOG_LEVEL: "DEBUG"
       LOG_DIR: "/app/logs"
+      ENVIRONMENT: "development"
 
   ui:
     command: sh -lc "npm install && npm run dev -- -p 3000"

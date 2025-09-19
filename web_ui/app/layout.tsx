@@ -8,7 +8,7 @@ import { APP_METADATA } from '@/lib/app-config'
 export const metadata: Metadata = {
   title: APP_METADATA.title,
   description: APP_METADATA.description,
-  keywords: APP_METADATA.keywords,
+  keywords: [...APP_METADATA.keywords], // Convert readonly array to mutable
   icons: {
     icon: '/icon.svg',
     apple: '/apple-icon.svg',
