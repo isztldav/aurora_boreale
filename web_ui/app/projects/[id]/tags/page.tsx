@@ -19,7 +19,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMe
 import { formatDateTime, shortId } from "@/lib/utils"
 import { NAV_LABELS } from "@/lib/app-config"
 import { RunStateBadge } from "@/components/projects/run-state-badge"
-import { apiEx } from "@/lib/api"
+import { api, apiEx } from "@/lib/api"
 
 // API functions using the real API client
 const fetchTags = async (projectId: string): Promise<TagWithStats[]> => {
@@ -44,7 +44,7 @@ const fetchRunsByTag = async (tagId: string, includeDescendants: boolean = true)
 }
 
 const fetchProjectRuns = async (projectId: string): Promise<RunWithTags[]> => {
-  const runs = await apiEx.runs?.list({ project_id: projectId }) || []
+  const runs = await api.runs.list({ project_id: projectId }) || []
   return runs.map((run): RunWithTags => ({
     ...run,
     tags: [], // Would be populated by backend
