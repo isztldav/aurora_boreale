@@ -1,25 +1,27 @@
 # 🚀 ML Training Platform v2
 
-A modern, unified platform for reproducible machine learning experiments focused on supervised image classification. Built with FastAPI, Next.js, and Hugging Face Transformers.
+A modern, unified platform for reproducible machine learning experiments focused on supervised image classification using Hugging Face Transformers. Features clean architecture, real-time monitoring, and comprehensive ML experiment management.
 
-![Platform Architecture](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi) ![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Platform Architecture](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi) ![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 
 ## ✨ Features
 
 ### 🎯 Core Capabilities
-- **Project Management**: Organize experiments into projects with hierarchical structure
-- **Training Configuration**: Visual config builder with registry-based components
-- **GPU Management**: Automatic GPU discovery and allocation for distributed training
-- **Real-time Monitoring**: Live training logs and metrics via WebSocket
-- **TensorBoard Integration**: Embedded TensorBoard instances with lifecycle management
-- **Model Testing**: Drag-and-drop image testing against trained checkpoints
+- **🗂️ Project Management**: Organize experiments into projects with experiment groups
+- **⚙️ Visual Config Builder**: Registry-based training configuration with real-time validation
+- **🔥 GPU Management**: Automatic GPU discovery, allocation, and multi-agent support
+- **📊 Real-time Monitoring**: Live training logs and metrics via WebSocket streaming
+- **📈 TensorBoard Integration**: Embedded TensorBoard instances with automatic lifecycle management
+- **🧪 Model Testing**: Drag-and-drop image testing against trained checkpoints with inference visualization
+- **🏷️ Label Persistence**: Automatic dataset label mapping preservation for reproducibility
 
 ### 🔧 Technical Highlights
-- **Clean Architecture**: Modular design with clear separation of concerns
-- **Extensible Registry**: Plugin system for models, optimizers, losses, and augmentations
-- **Label Persistence**: Automatic dataset label mapping preservation
-- **Hot Reload Development**: Fast iteration with Docker Compose
-- **Production Ready**: Comprehensive logging, error handling, and Docker deployment
+- **🏗️ Clean Architecture**: Modular design with clear separation between core ML and platform infrastructure
+- **🔌 Extensible Registry System**: Plugin architecture for models, optimizers, losses, and augmentations
+- **⚡ Real-time Log Streaming**: Custom progress tracking with WebSocket broadcasting
+- **🔄 Hot Reload Development**: Fast iteration with Docker Compose development environment
+- **📦 Production Ready**: Comprehensive structured logging, error handling, and containerized deployment
+- **🎯 Zero External Dependencies**: Pure ML core with no platform coupling
 
 ## 🏗️ Architecture
 
@@ -27,7 +29,7 @@ A modern, unified platform for reproducible machine learning experiments focused
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │     Nginx       │◄──►│   Next.js UI   │◄──►│  FastAPI API    │◄──►│ Training Agent  │
 │ Reverse Proxy   │    │  (Port 3000)   │    │  (Port 8000)    │    │ (GPU Executor)  │
-│  (Port 8080)    │    │                │    │                │    │                │
+│  (Port 8080)    │    │   shadcn/ui     │    │  + TensorBoard  │    │ Clean Arch      │
 └─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │                       │
          └───────────────────────┼───────────────────────┼───────────────────────┘
@@ -36,15 +38,24 @@ A modern, unified platform for reproducible machine learning experiments focused
                                               ┌─────────────────┐
                                               │   PostgreSQL    │
                                               │   Database      │
+                                              │   (Centralized) │
+                                              └─────────────────┘
+                                                         ▲
+                                              ┌─────────────────┐
+                                              │   Core ML       │
+                                              │   Engine        │
+                                              │ (Pure ML Logic) │
                                               └─────────────────┘
 ```
 
-- **Nginx**: Reverse proxy serving the platform on port 8080
-- **Frontend**: Modern React dashboard with real-time updates
-- **Backend**: FastAPI REST API with embedded TensorBoard
-- **Agent**: GPU-bound training executor with clean architecture
-- **Core**: Pure ML training engine with Hugging Face integration
-- **Database**: PostgreSQL with SQLAlchemy ORM
+### Component Overview
+- **🌐 Nginx**: Reverse proxy serving the unified platform on port 8080
+- **⚛️ Frontend**: Next.js 15 with TypeScript, Tailwind CSS, shadcn/ui components, and real-time WebSocket updates
+- **🚀 Backend**: FastAPI REST API with embedded TensorBoard, WebSocket streaming, and comprehensive logging
+- **🤖 Agent**: GPU-bound training executor with clean architecture (domain/services/repositories pattern)
+- **🧠 Core ML Engine**: Pure ML training logic with Hugging Face Transformers integration and no external dependencies
+- **🗄️ Database**: PostgreSQL with centralized SQLAlchemy models and automated schema management
+- **🔌 Shared Infrastructure**: Common database models, schemas, and utilities shared across services
 
 ## 🚀 Quick Start
 
@@ -165,18 +176,45 @@ docker run --name postgres -e POSTGRES_PASSWORD=password -p 5432:5432 -d postgre
 
 ```
 src/
-├── dashboard/          # FastAPI backend
-├── agent/             # Training agent with clean architecture
-├── core/              # Pure ML training engine
-└── shared/            # Database models and shared utilities
+├── dashboard/              # FastAPI backend service
+│   ├── app.py             # Main FastAPI app with CORS and routing
+│   ├── routers/           # Modular API endpoints (projects, runs, configs, etc.)
+│   └── tensorboard.py     # Embedded TensorBoard WSGI integration
+├── agent/                 # Training agent service (Clean Architecture)
+│   ├── server.py          # FastAPI agent server
+│   ├── api/               # Application factory and dependency injection
+│   ├── domain/            # Core domain models
+│   ├── services/          # Business logic (training executor, log streamer)
+│   └── repositories/      # Data access layer
+├── core/                  # Pure ML training engine (zero external dependencies)
+│   ├── config.py          # TrainConfig dataclass with label persistence
+│   ├── training/          # Training pipeline (runner, train_eval, model)
+│   ├── data/              # Data handling (datasets, transforms, GPU transforms)
+│   └── utils/             # Pure utilities (checkpoint, registry, progress tracker)
+└── shared/                # Shared infrastructure
+    ├── database/          # Centralized database management
+    │   ├── models.py      # All SQLAlchemy models
+    │   ├── connection.py  # Session management and init_db()
+    │   └── schemas.py     # Pydantic request/response schemas
+    ├── logging/           # Unified structured logging system
+    └── types/             # Shared type definitions
 
-web_ui/                # Next.js frontend
-├── app/              # App router pages
-├── components/       # React components
-└── lib/             # Utilities and hooks
+web_ui/                    # Next.js frontend
+├── app/                   # App Router pages
+│   ├── projects/[id]/     # Project detail pages
+│   └── tensorboard/[runId]/ # Embedded TensorBoard
+├── components/            # React components
+│   ├── shell/             # Main layout with responsive sidebar
+│   ├── projects/          # Project management UI
+│   └── ui/                # shadcn/ui components
+└── lib/                   # Utilities and hooks
+    ├── store.ts           # Zustand UI state management
+    ├── query-provider.tsx # TanStack Query setup
+    └── api.ts             # API client with enhanced error handling
 
-main.py               # Standalone training entry point
-docker-compose.yml    # Container orchestration
+main.py                    # Standalone training entry point
+docker-compose.yml         # Production container orchestration
+docker-compose.dev.yml     # Development with hot reload
 ```
 
 ## 🧪 Testing
@@ -184,15 +222,25 @@ docker-compose.yml    # Container orchestration
 ```bash
 # Frontend type checking and linting
 cd web_ui
-npm run typecheck
-npm run lint
+npm run typecheck  # TypeScript validation
+npm run lint       # ESLint code quality checks
 
 # Backend type checking (optional)
-mypy src/
+mypy src/          # Python type hint validation
 
-# Integration testing
-pytest tests/  # (when test suite is added)
+# Standalone ML training
+python main.py --config path/to/config.json
+
+# Integration testing (when implemented)
+pytest tests/      # Full test suite
 ```
+
+### Quality Assurance
+- **Type Safety**: Full TypeScript frontend + Python type hints
+- **Code Quality**: ESLint, Prettier for consistent formatting
+- **Error Handling**: Comprehensive error boundaries and user-friendly messages
+- **Logging**: Structured logging with no silent exception handling
+- **Architecture**: Clean separation prevents tight coupling and improves testability
 
 ## 📦 Deployment
 
@@ -241,19 +289,40 @@ docker compose up -d
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## 📚 Documentation
+
+- **Technical Guide**: `CLAUDE.md` - Comprehensive development guide and architecture details
+- **Architecture Cache**: `PROJECT_CACHE.md` - Complete codebase structure and extension patterns
+- **API Documentation**: http://localhost:8000/docs - Interactive FastAPI documentation
+- **Component Library**: Built with [shadcn/ui](https://ui.shadcn.com/) - Modern, accessible React components
+
 ## 🆘 Support
 
-- **Issues**: Report bugs and request features via GitHub Issues
-- **Documentation**: See `CLAUDE.md` for detailed technical documentation
-- **Architecture**: See `PROJECT_CACHE.md` for comprehensive architecture overview
+- **🐛 Issues**: Report bugs and request features via GitHub Issues
+- **💬 Discussions**: Architecture questions and feature discussions
+- **📖 Wiki**: Additional guides and tutorials (coming soon)
+- **🔧 Development**: See documentation files for detailed technical guidance
+
+## 🌟 Key Features Highlight
+
+### Latest Updates
+- **🏗️ Clean Architecture Refactoring**: Complete separation of core ML logic from platform infrastructure
+- **📊 Real-time Log Streaming**: Live training logs with WebSocket broadcasting and custom progress tracking
+- **🧪 Model Testing Interface**: Drag-and-drop image testing with inference visualization
+- **🏷️ Label Persistence System**: Automatic dataset label mapping preservation for reproducibility
+- **📋 Comprehensive Logging**: Structured logging system with no silent exception handling
+- **🔧 Enhanced Error Handling**: User-friendly error messages and graceful failure handling
 
 ## 🙏 Acknowledgments
 
-- [Hugging Face Transformers](https://huggingface.co/transformers/) for model support
-- [shadcn/ui](https://ui.shadcn.com/) for UI components
-- [FastAPI](https://fastapi.tiangolo.com/) for the backend framework
-- [Next.js](https://nextjs.org/) for the frontend framework
+- **🤗 [Hugging Face Transformers](https://huggingface.co/transformers/)** - Pre-trained model ecosystem
+- **🎨 [shadcn/ui](https://ui.shadcn.com/)** - Beautiful, accessible React components
+- **⚡ [FastAPI](https://fastapi.tiangelo.com/)** - Modern, fast Python web framework
+- **⚛️ [Next.js](https://nextjs.org/)** - Full-stack React framework
+- **🔍 [TanStack Query](https://tanstack.com/query)** - Powerful data synchronization
+- **🐻 [Zustand](https://zustand-demo.pmnd.rs/)** - Lightweight state management
+- **🎯 [TensorBoard](https://www.tensorflow.org/tensorboard)** - ML experiment visualization
 
 ---
 
-**Made with ❤️ for the ML community**
+**🚀 Built for the ML community with modern web technologies and clean architecture principles**
