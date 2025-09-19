@@ -298,9 +298,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- **🐛 Issues**: [GitHub Issues](https://github.com/your-org/aurora-boreale/issues)
-- **💬 Discussions**: [GitHub Discussions](https://github.com/your-org/aurora-boreale/discussions)
-- **📖 Documentation**: [Wiki](https://github.com/your-org/aurora-boreale/wiki)
+- **🐛 Issues**: [GitHub Issues](https://github.com/isztldav/aurora-boreale/issues)
+- **💬 Discussions**: [GitHub Discussions](https://github.com/isztldav/aurora-boreale/discussions)
+- **📖 Documentation**: [Wiki](https://github.com/isztldav/aurora-boreale/wiki)
 
 ---
 
