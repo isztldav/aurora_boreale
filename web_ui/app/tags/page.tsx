@@ -225,10 +225,6 @@ export default function TagsPage() {
         {/* Breadcrumb */}
         <div className="flex items-center justify-between">
           <Breadcrumb>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/">{NAV_LABELS.dashboard}</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
             <BreadcrumbItem>Tags</BreadcrumbItem>
           </Breadcrumb>
         </div>

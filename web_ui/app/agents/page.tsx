@@ -13,7 +13,7 @@ export default function AgentsPage() {
   return (
     <Shell>
       <Breadcrumb className="mb-4">
-        <BreadcrumbItem><BreadcrumbLink href="/">{NAV_LABELS.dashboard}</BreadcrumbLink></BreadcrumbItem>
+        <BreadcrumbItem><BreadcrumbLink href="/agents">Agents</BreadcrumbLink></BreadcrumbItem>
       </Breadcrumb>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Agents</h1>
