@@ -73,14 +73,14 @@ export function DynamicConfigForm({
   const [name, setName] = useState('baseline')
   const [groupId, setGroupId] = useState<string | undefined>(undefined)
 
-  // Initialize form with defaults when schema loads
+  // Initialize form with defaults when schema loads (only for new configs)
   useEffect(() => {
-    if (configSchema?.success && configSchema.defaults) {
+    if (configSchema?.success && configSchema.defaults && !editConfigId && !cloneConfigId) {
       // Set initial values from schema defaults
       setFormValues(configSchema.defaults)
 
       // Set dataset from first available if none selected
-      if (datasets && datasets.length > 0 && !formValues.root) {
+      if (datasets && datasets.length > 0) {
         const firstDataset = datasets[0]
         setFormValues(prev => ({
           ...prev,
@@ -88,7 +88,7 @@ export function DynamicConfigForm({
         }))
       }
     }
-  }, [configSchema, datasets])
+  }, [configSchema, datasets, editConfigId, cloneConfigId])
 
   // Populate form when editing or cloning
   useEffect(() => {
@@ -96,16 +96,16 @@ export function DynamicConfigForm({
     if (sourceConfig && configSchema?.success) {
       const cfg = sourceConfig.config_json
 
-      setName(sourceConfig.name)
+      setName(cloneConfigId ? `${sourceConfig.name}_copy` : sourceConfig.name)
       setGroupId(sourceConfig.group_id)
 
-      // Merge config values with defaults
-      setFormValues(prev => ({
-        ...prev,
+      // Start with defaults, then overlay with config values (preserving existing values)
+      setFormValues({
+        ...configSchema.defaults,
         ...cfg
-      }))
+      })
     }
-  }, [editConfig, cloneConfig, configSchema])
+  }, [editConfig, cloneConfig, configSchema, editConfigId, cloneConfigId])
 
   const updateFormValue = (key: string, value: any) => {
     setFormValues(prev => ({ ...prev, [key]: value }))
@@ -122,8 +122,7 @@ export function DynamicConfigForm({
             <Label>{label}</Label>
             <Select
               value={
-                datasets.find(d => d.root_path === value)?.id ||
-                (value ? 'custom' : datasets[0]?.id || 'custom')
+                value ? (datasets.find(d => d.root_path === value)?.id || 'custom') : ''
               }
               onValueChange={(selectedId) => {
                 if (selectedId === 'custom') {
@@ -165,7 +164,7 @@ export function DynamicConfigForm({
         return (
           <div key={fieldKey}>
             <Label>{label}</Label>
-            <Select value={value || ''} onValueChange={(v) => updateFormValue(fieldKey, v)}>
+            <Select value={value || ''} onValueChange={(v) => updateFormValue(fieldKey, v || undefined)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {/* Models from project registry */}
@@ -217,7 +216,7 @@ export function DynamicConfigForm({
         return (
           <div key={fieldKey}>
             <Label>{label}</Label>
-            <Select value={value || ''} onValueChange={(v) => updateFormValue(fieldKey, v)}>
+            <Select value={value || ''} onValueChange={(v) => updateFormValue(fieldKey, v || undefined)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {selectOptions.map((option: any) => (
@@ -244,8 +243,11 @@ export function DynamicConfigForm({
             <Label>{label}</Label>
             <Input
               type="number"
-              value={value || ''}
-              onChange={(e) => updateFormValue(fieldKey, Number(e.target.value))}
+              value={value !== undefined && value !== null ? value : ''}
+              onChange={(e) => {
+                const numValue = e.target.value === '' ? undefined : Number(e.target.value)
+                updateFormValue(fieldKey, numValue)
+              }}
               min={min}
               max={max}
               step={step}
@@ -260,8 +262,8 @@ export function DynamicConfigForm({
           <div key={fieldKey}>
             <Label>{label}</Label>
             <Input
-              value={value || ''}
-              onChange={(e) => updateFormValue(fieldKey, e.target.value)}
+              value={value !== undefined && value !== null ? value : ''}
+              onChange={(e) => updateFormValue(fieldKey, e.target.value || undefined)}
               placeholder={placeholder}
             />
             {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
@@ -423,11 +425,20 @@ export function DynamicConfigForm({
       // Clean up the config - ensure proper types
       const cleanedConfig = { ...formValues }
 
-      // Convert string numbers to actual numbers
+      // Convert string numbers to actual numbers and handle undefined values
       Object.keys(cleanedConfig).forEach(key => {
         const fieldMeta = configSchema?.field_metadata?.[key]
-        if (fieldMeta?.ui_type === 'number' && typeof cleanedConfig[key] === 'string') {
-          cleanedConfig[key] = Number(cleanedConfig[key])
+        if (fieldMeta?.ui_type === 'number') {
+          if (typeof cleanedConfig[key] === 'string' && cleanedConfig[key] !== '') {
+            cleanedConfig[key] = Number(cleanedConfig[key])
+          } else if (cleanedConfig[key] === undefined || cleanedConfig[key] === '') {
+            // Remove undefined/empty values - let backend handle defaults
+            delete cleanedConfig[key]
+          }
+        }
+        // Remove undefined values for other field types as well
+        if (cleanedConfig[key] === undefined) {
+          delete cleanedConfig[key]
         }
       })
 
@@ -562,7 +573,12 @@ export function DynamicConfigForm({
                 <Button type="button" variant="outline" onClick={() => {
                   // Reset form to defaults
                   if (configSchema?.defaults) {
-                    setFormValues(configSchema.defaults)
+                    const defaultsWithDataset = { ...configSchema.defaults }
+                    // Set dataset from first available if any
+                    if (datasets && datasets.length > 0) {
+                      defaultsWithDataset.root = datasets[0].root_path
+                    }
+                    setFormValues(defaultsWithDataset)
                     setName('baseline')
                     setGroupId(undefined)
                   }
