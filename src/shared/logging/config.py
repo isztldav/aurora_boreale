@@ -157,10 +157,8 @@ def configure_uvicorn_logging() -> None:
     Configure uvicorn logging to integrate with our logging system.
     Should be called before starting uvicorn server.
     """
-    # Get our configured logger
-    logger = logging.getLogger()
-
-    # Configure uvicorn loggers to use our handlers
+    # Disable uvicorn's default logging configuration to prevent conflicts
+    # We'll handle uvicorn logs through our own logging system
     uvicorn_loggers = [
         "uvicorn",
         "uvicorn.error",
@@ -169,5 +167,5 @@ def configure_uvicorn_logging() -> None:
 
     for logger_name in uvicorn_loggers:
         uvicorn_logger = logging.getLogger(logger_name)
-        uvicorn_logger.handlers = logger.handlers
-        uvicorn_logger.propagate = False
+        uvicorn_logger.setLevel(logging.WARNING)  # Reduce verbosity
+        uvicorn_logger.propagate = True  # Let root logger handle it

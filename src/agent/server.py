@@ -33,4 +33,6 @@ if __name__ == "__main__":
         port=args.port,
         reload=args.reload,
         reload_dirs=["/app/src"],
+        log_config=None,  # Disable uvicorn's default logging config
+        access_log=False  # Disable access logging to prevent conflicts
     )
