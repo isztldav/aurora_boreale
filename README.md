@@ -1,4 +1,4 @@
-# 🚀 ML Training Platform v2
+# 🚀 Aurora Boreale
 
 A modern, unified platform for reproducible machine learning experiments focused on supervised image classification using Hugging Face Transformers. Features clean architecture, real-time monitoring, and comprehensive ML experiment management.
 
