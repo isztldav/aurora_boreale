@@ -367,7 +367,7 @@ http_logs.txt
 runs/
 /datasets/
 
-.vscode
+.vscode/*
 .claude
 .mcp.json
 CLAUDE.md
