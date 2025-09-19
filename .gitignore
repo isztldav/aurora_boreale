@@ -366,3 +366,9 @@ experiments/
 http_logs.txt
 runs/
 /datasets/
+
+.vscode
+.claude
+.mcp.json
+CLAUDE.md
+PROJECT_CACHE.md

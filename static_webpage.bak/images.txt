@@ -1,9 +1,0 @@
-./images/models_hf.png: search for thousands of HunngingFace models ready to be fine-tuned.
-./images/datasets_00.png: easily browse for on disk ready DatasetFolder
-./images/datasets_01.png:one click import, files and labels auto-discovery, and dataset ready to be trained on
-./images/training_configuration_00.png: create, version, and edit custom training setups with fine-grained configurations
-./images/training_configuration_01.png: real-time logging for configurations scheduled for training
-./images/training_configuration_02.png: real-time native tensorboard for scheduled for training
-./images/training_configuration_03.png: natively test successfully complete trainings from the browser by simply dragging an image
-./images/tagging.png: assign tags to scheduled trainings for
-./images/agents.png: system will autodiscover avaiable GPUs and expose them as agents ready to perform some training

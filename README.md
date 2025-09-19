@@ -291,8 +291,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 📚 Documentation
 
-- **Technical Guide**: `CLAUDE.md` - Comprehensive development guide and architecture details
-- **Architecture Cache**: `PROJECT_CACHE.md` - Complete codebase structure and extension patterns
 - **API Documentation**: http://localhost:8000/docs - Interactive FastAPI documentation
 - **Component Library**: Built with [shadcn/ui](https://ui.shadcn.com/) - Modern, accessible React components
 
