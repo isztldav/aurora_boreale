@@ -200,8 +200,13 @@ export const TagTreeManager: React.FC<TagTreeManagerProps> = ({
 
     switch (action) {
       case 'create':
-        setFormData({ name: '', parentId: data?.parentId || tagId, projectId: projectId || '' })
-        setDialogState({ type: 'create', parentId: data?.parentId || tagId })
+        const isChildTag = data?.parentId || tagId
+        setFormData({
+          name: '',
+          parentId: isChildTag ? (data?.parentId || tagId) : '',
+          projectId: isChildTag ? tag.project_id : (projectId || '')
+        })
+        setDialogState({ type: 'create', parentId: isChildTag ? (data?.parentId || tagId) : undefined })
         break
       case 'edit':
         setFormData({ name: tag.name, parentId: '', projectId: tag.project_id })
@@ -274,7 +279,7 @@ export const TagTreeManager: React.FC<TagTreeManagerProps> = ({
             setDialogState({ type: 'create' })
           }}
           size="sm"
-          disabled={isLoading}
+          disabled={isLoading || (!projectId && (!projects || projects.length === 0))}
         >
           <Plus className="mr-2 h-4 w-4" />
           New Tag
@@ -296,7 +301,10 @@ export const TagTreeManager: React.FC<TagTreeManagerProps> = ({
           </div>
         ) : (
           <div className="text-center py-8 text-muted-foreground">
-            No tags created yet. Click "New Tag" to get started.
+            {(!projectId && (!projects || projects.length === 0))
+              ? "No projects available. Create a project first to manage tags."
+              : "No tags created yet. Click \"New Tag\" to get started."
+            }
           </div>
         )}
       </ScrollArea>
@@ -313,14 +321,26 @@ export const TagTreeManager: React.FC<TagTreeManagerProps> = ({
             {dialogState.type === 'move' && 'Move Tag'}
           </DialogTitle>
           <DialogDescription>
-            {dialogState.type === 'create' && 'Create a new tag in the hierarchy.'}
+            {dialogState.type === 'create' && dialogState.parentId &&
+              (() => {
+                const parentTag = flattenTags(tags).find(t => t.id === dialogState.parentId)
+                return `Create a new child tag under "${parentTag?.name}".`
+              })()
+            }
+            {dialogState.type === 'create' && !dialogState.parentId && 'Create a new tag in the hierarchy.'}
             {dialogState.type === 'edit' && 'Change the tag name.'}
-            {dialogState.type === 'move' && 'Move this tag to a new parent.'}
+            {dialogState.type === 'move' &&
+              (() => {
+                const currentTag = dialogState.tagId ? flattenTags(tags).find(t => t.id === dialogState.tagId) : null
+                const project = projects?.find(p => p.id === currentTag?.project_id)
+                return `Move this tag to a new parent within the "${project?.name || 'current'}" project.`
+              })()
+            }
           </DialogDescription>
 
           <form onSubmit={handleDialogSubmit} className="space-y-4">
-            {/* Project selector - only show when not in project context or when creating root level tags */}
-            {dialogState.type === 'create' && !projectId && projects && projects.length > 0 && (
+            {/* Project selector - only show when not in project context and creating root level tags */}
+            {dialogState.type === 'create' && !projectId && !dialogState.parentId && projects && projects.length > 0 && (
               <div>
                 <Label htmlFor="projectSelect">Project</Label>
                 <select
@@ -353,7 +373,7 @@ export const TagTreeManager: React.FC<TagTreeManagerProps> = ({
               </div>
             )}
 
-            {(dialogState.type === 'create' || dialogState.type === 'move') && (
+            {((dialogState.type === 'create' && !dialogState.parentId) || dialogState.type === 'move') && (
               <div>
                 <Label htmlFor="parentTag">Parent Tag (optional)</Label>
                 <select
@@ -364,7 +384,20 @@ export const TagTreeManager: React.FC<TagTreeManagerProps> = ({
                 >
                   <option value="">Root Level</option>
                   {allFlatTags
-                    .filter(tag => dialogState.type === 'move' ? tag.id !== dialogState.tagId : true)
+                    .filter(tag => {
+                      // Filter out the tag itself when moving
+                      if (dialogState.type === 'move' && tag.id === dialogState.tagId) return false
+
+                      // Filter out descendants when moving (prevent circular references)
+                      if (dialogState.type === 'move' && dialogState.tagId) {
+                        const currentTag = allFlatTags.find(t => t.id === dialogState.tagId)
+                        if (currentTag && tag.path.startsWith(currentTag.path + '/')) return false
+                      }
+
+                      // Only show tags from the same project
+                      const targetProjectId = formData.projectId || projectId
+                      return targetProjectId ? tag.project_id === targetProjectId : true
+                    })
                     .map((tag) => (
                       <option key={tag.id} value={tag.id}>
                         {'  '.repeat(tag.level)}{tag.name}
