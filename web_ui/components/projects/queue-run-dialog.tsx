@@ -28,10 +28,10 @@ export function QueueRunDialog({ projectId, configId }: QueueRunDialogProps) {
   const [priority, setPriority] = useState<number>(0)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
 
-  // Fetch available tags
+  // Fetch available tags for this project only
   const { data: tags = [] } = useQuery({
-    queryKey: ['tags'],
-    queryFn: () => apiEx.tags.list()
+    queryKey: ['project-tags', { projectId }],
+    queryFn: () => apiEx.tags.getProjectTags(projectId)
   })
 
   const toggleGpu = (idx: number, v: boolean) => setGpuSel((s) => ({ ...s, [idx]: v }))

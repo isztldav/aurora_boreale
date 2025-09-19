@@ -43,7 +43,7 @@ export default function ProjectPage() {
   const [states, setStates] = useState<Record<string, boolean>>({ running: true, queued: true, failed: true, succeeded: true, canceled: true })
   const [cols, setCols] = useState<Record<string, boolean>>({ best: true, epoch: true, started: true, finished: true })
   const [tbRunId, setTbRunId] = useState<string | null>(null)
-  const [cfgRun, setCfgRun] = useState<{ id: string; name: string; config_id: string } | null>(null)
+  const [cfgRun, setCfgRun] = useState<{ id: string; name: string; config_id: string; project_id: string } | null>(null)
   const [openRunId, setOpenRunId] = useState<string | null>(null)
   const [testRunId, setTestRunId] = useState<string | null>(null)
   const filtered = useMemo(() => {
@@ -232,7 +232,7 @@ export default function ProjectPage() {
                     <TD className="font-medium">
                       <button
                         className="text-left text-primary hover:underline truncate max-w-[150px] block"
-                        onClick={() => setCfgRun({ id: r.id, name: r.name, config_id: r.config_id })}
+                        onClick={() => setCfgRun({ id: r.id, name: r.name, config_id: r.config_id, project_id: r.project_id })}
                         title={r.name}
                       >
                         {r.name}

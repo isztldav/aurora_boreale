@@ -459,12 +459,15 @@ async def assign_tags_to_run(
     if not run:
         raise HTTPException(status_code=404, detail="Training run not found")
 
-    # Validate all tag IDs exist
+    # Validate all tag IDs exist and belong to the same project as the run
     existing_tags = db.query(models.Tag).filter(
-        models.Tag.id.in_(assignment.tag_ids)
+        and_(
+            models.Tag.id.in_(assignment.tag_ids),
+            models.Tag.project_id == run.project_id
+        )
     ).all()
     if len(existing_tags) != len(assignment.tag_ids):
-        raise HTTPException(status_code=400, detail="One or more tag IDs are invalid")
+        raise HTTPException(status_code=400, detail="One or more tag IDs are invalid or do not belong to the same project as the run")
 
     # Remove existing tag assignments
     db.query(models.TrainingRunTag).filter(
