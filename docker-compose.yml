@@ -76,7 +76,7 @@ services:
       LOG_LEVEL: "INFO"
       LOG_DIR: "/app/logs"
     # Run the agent directly; deps are already installed in the image
-    command: bash -lc "python -m agent.server --gpu-index $$GPU_INDEX"
+    command: bash -lc "python -m agent --gpu-index $$GPU_INDEX"
     # Increase shared memory for PyTorch DataLoader workers
     shm_size: "2gb"
     depends_on:

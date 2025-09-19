@@ -15,7 +15,8 @@ def create_app(agent_id: Optional[str] = None, gpu_index: Optional[int] = None):
     return AgentAppFactory.create_app(agent_id, gpu_index)
 
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for the training agent server."""
     import argparse
     import uvicorn
 
@@ -36,3 +37,7 @@ if __name__ == "__main__":
         log_config=None,  # Disable uvicorn's default logging config
         access_log=False  # Disable access logging to prevent conflicts
     )
+
+
+if __name__ == "__main__":
+    main()

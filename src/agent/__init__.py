@@ -11,12 +11,11 @@ Architecture:
 - api: HTTP API and application factory
 
 Usage:
-    from agent import create_app
+    from agent.server import create_app
 
     app = create_app(agent_id="...", gpu_index=0)
 """
 
-from .server import create_app
-
-__all__ = ["create_app"]
+# Note: No imports from server module to avoid circular imports when
+# running as python -m agent.server
 
