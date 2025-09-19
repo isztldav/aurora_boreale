@@ -372,3 +372,4 @@ runs/
 .mcp.json
 CLAUDE.md
 PROJECT_CACHE.md
+pyrightconfig.json
