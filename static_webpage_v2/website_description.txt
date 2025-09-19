@@ -1,0 +1,189 @@
+# AuroraBoreale Website Description
+
+## Overview
+A modern, responsive landing page for AuroraBoreale - an open-source ML training platform. The website uses a sophisticated design with gradient color schemes, smooth animations, and a clean professional layout optimized for showcasing machine learning technology.
+
+## Technical Stack & Dependencies
+- **Framework**: Static HTML with Tailwind CSS via CDN
+- **Fonts**: Inter and Poppins from Google Fonts
+- **Icons**: Inline SVG icons throughout
+- **Animations**: GSAP (GreenSock) with ScrollTrigger plugin
+- **Styling**: Custom CSS with Tailwind utility classes
+- **JavaScript**: Vanilla JavaScript for interactions
+
+## Color Scheme & Design System
+- **Primary Brand Colors**:
+  - Aurora green palette (50-900 shades): #ecfdf5 to #064e3b
+  - Deep blue palette (50-900 shades): #f0f9ff to #164e63
+- **Gradients**: Linear gradients combining aurora green, blue, and purple
+- **Typography**:
+  - Sans-serif: Inter font family
+  - Display: Poppins font family
+- **Effects**: Glass morphism, backdrop blur, hover transforms, glow effects
+
+## Page Structure & Layout
+
+### 1. Navigation Header (Fixed)
+- **Position**: Fixed top navigation with glass effect background
+- **Logo**: SVG shield icon + "AuroraBoreale" text with gradient
+- **Desktop Menu**: Links to Features, Solutions, Pricing, Resources, About, Contact
+- **Mobile Menu**: Hamburger menu with slide-down functionality
+- **Right Actions**:
+  - Dark/light theme toggle with animated icons
+  - Login link (GitHub)
+  - "Get Started" primary CTA button (GitHub)
+
+### 2. Hero Section (Full Screen)
+- **Background**: Gradient overlay with floating geometric shapes
+- **Animated Elements**: 3 floating circles with staggered animations
+- **Main Heading**: "Open-Source ML Training Platform" with gradient text
+- **Subheading**: Descriptive text about free, unified platform for ML experiments
+- **Value Props**: Zero code ML training dashboard
+- **CTAs**:
+  - Primary: "Get Started on GitHub" with GitHub icon
+  - Secondary: "Learn More" with info icon
+- **Tech Badges**: 4 shield badges for FastAPI, Next.js, PostgreSQL, Docker
+- **Scroll Indicator**: Animated down arrow at bottom
+
+### 3. Architecture Overview Section
+- **Background**: Light gray with subtle pattern
+- **Title**: "Modern Architecture for ML Excellence"
+- **3-Column Benefits Grid**:
+  - Zero Dependencies (star icon, aurora theme)
+  - Production Ready (chart icon, purple theme)
+  - Open Source (checkmark icon, blue theme)
+- **Architecture Diagram**: ASCII art showing service connections:
+  - Nginx Reverse Proxy (Port 8080)
+  - Next.js UI (Port 3000)
+  - FastAPI API (Port 8000) + TensorBoard
+  - Training Agent (GPU Executor)
+  - PostgreSQL Database (Centralized)
+  - Core ML Engine (Pure ML Logic)
+
+### 4. Features Section
+- **Title**: "Complete ML Experiment Management"
+- **6-Card Feature Grid** (3x2 layout):
+  1. **Project Management** (aurora theme): Organize experiments with project groups
+  2. **Visual Config Builder** (purple theme): Registry-based training configuration
+  3. **GPU Management** (blue theme): Automatic discovery and multi-agent support
+  4. **Real-time Monitoring** (green theme): Live training logs via WebSocket
+  5. **TensorBoard Integration** (yellow theme): Embedded instances with lifecycle management
+  6. **Model Testing** (red theme): Drag-and-drop image testing against checkpoints
+- **Card Design**: White cards with colored icon backgrounds, hover animations
+
+### 5. Platform Screenshots Section
+- **Background**: Light gray
+- **Title**: "See the Platform in Action"
+- **4 Feature Showcases** (alternating left/right layout):
+
+  #### A. Training Configuration (Left Image)
+  - **Image**: training_configuration_01.png
+  - **Features**: Model selection, hyperparameter optimization, data augmentation
+  - **Design**: Image with hover scale effect and gradient overlay
+
+  #### B. GPU Agent Management (Right Image)
+  - **Image**: agents.png
+  - **Features**: Automatic GPU discovery, real-time status, multi-agent coordination
+
+  #### C. Dataset Management (Left Image)
+  - **Image**: datasets_01.png
+  - **Features**: ImageFolder validation, metadata extraction, class distribution
+
+  #### D. Hugging Face Integration (Right Image)
+  - **Image**: models_hf.png
+  - **Features**: Browse models, metadata/docs, one-click selection
+
+### 6. Getting Started Section
+- **Background**: Gradient from aurora to purple
+- **Title**: "Ready to Start Your ML Journey?"
+- **Code Examples**: 3 terminal code blocks:
+  - Git clone repository
+  - Docker compose up
+  - Open localhost:8080
+- **CTA**: "View on GitHub" button with GitHub icon
+
+### 7. Footer
+- **Background**: Dark gray (#gray-900)
+- **Company Section**: Logo, description, social links (GitHub, LinkedIn)
+- **Product Links**: Features, Pricing, Security, API
+- **Resources Links**: Documentation, Help Center, Community, Contact
+- **Bottom Bar**: Copyright notice, Privacy Policy, Terms of Service
+
+## Interactive Features & Animations
+
+### Theme System
+- **Toggle**: Sun/moon icons that swap on click
+- **Storage**: Persists preference in localStorage
+- **Auto-detect**: Respects system preference as default
+- **Classes**: Uses 'dark' class on html element
+
+### Mobile Responsiveness
+- **Breakpoints**: Standard Tailwind responsive classes (sm, md, lg)
+- **Navigation**: Collapsible hamburger menu for mobile
+- **Layout**: Stacked layouts on mobile, side-by-side on desktop
+- **Typography**: Responsive text sizing (text-4xl md:text-6xl lg:text-7xl)
+
+### Animation System
+- **GSAP Animations**:
+  - Hero elements fade/slide in on load
+  - Feature cards animate on scroll
+  - Screenshot parallax effects
+  - Staggered animations with delays
+- **CSS Animations**:
+  - Floating geometric shapes (6s infinite)
+  - Glow effects on buttons
+  - Hover transforms and shadows
+  - Loading animations for images
+- **Scroll Behaviors**:
+  - Navbar hide/show on scroll direction
+  - Smooth scrolling for anchor links
+  - Intersection Observer for element visibility
+  - Progressive image loading
+
+### Interaction Details
+- **Hover States**: All buttons and cards have hover effects
+- **Focus States**: Keyboard navigation support
+- **Loading States**: Images fade in when loaded
+- **Error Handling**: Graceful fallbacks for missing images
+
+## Content Strategy
+
+### Messaging Hierarchy
+1. **Primary Value**: Free, open-source ML training platform
+2. **Target Audience**: ML researchers and practitioners
+3. **Key Benefits**: Clean architecture, production-ready, zero vendor lock-in
+4. **Social Proof**: Technology stack badges and GitHub integration
+
+### Call-to-Action Strategy
+- **Primary CTA**: "Get Started on GitHub" - drives to repository
+- **Secondary CTA**: "Learn More" - internal anchor navigation
+- **Supporting CTAs**: Login, View on GitHub (footer)
+- **Visual Hierarchy**: Primary CTAs use gradient buttons with glow effects
+
+### Technical Credibility
+- **Architecture Diagrams**: Shows professional system design
+- **Technology Stack**: Displays modern, industry-standard tools
+- **Screenshots**: Actual platform interface builds trust
+- **Code Examples**: Simple Docker deployment reduces friction
+
+## File Structure & Assets
+- **Main File**: index.html (single-page application)
+- **Images Directory**: images/ containing:
+  - training_configuration_01.png
+  - agents.png
+  - datasets_01.png
+  - models_hf.png
+- **External Dependencies**:
+  - Google Fonts (Inter, Poppins)
+  - Tailwind CSS CDN
+  - GSAP CDN
+  - Font Awesome-style SVG icons (inline)
+
+## Performance Considerations
+- **Loading Strategy**: Lazy loading for images
+- **Animation Performance**: GSAP for smooth 60fps animations
+- **Bundle Size**: CDN-based dependencies reduce build complexity
+- **Caching**: External CDN resources leverage browser caching
+- **Responsive Images**: Proper sizing and aspect ratios
+
+This website serves as a professional showcase for the AuroraBoreale ML training platform, emphasizing its open-source nature, technical sophistication, and ease of use through clean design and strategic content presentation.

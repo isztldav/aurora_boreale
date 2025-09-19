@@ -27,8 +27,8 @@ A modern, unified platform for reproducible machine learning experiments focused
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│     Nginx       │◄──►│   Next.js UI   │◄──►│  FastAPI API    │◄──►│ Training Agent  │
-│ Reverse Proxy   │    │  (Port 3000)   │    │  (Port 8000)    │    │ (GPU Executor)  │
+│     Nginx       │◄──►│   Next.js UI    │◄──►│  FastAPI API    │◄──►│ Training Agent  │
+│ Reverse Proxy   │    │  (Port 3000)    │    │  (Port 8000)    │    │ (GPU Executor)  │
 │  (Port 8080)    │    │   shadcn/ui     │    │  + TensorBoard  │    │ Clean Arch      │
 └─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │                       │

@@ -1,0 +1,37 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with rounded corners for Apple style -->
+  <rect x="10" y="10" width="160" height="160" rx="35" fill="#0F172A" stroke="#1E293B" stroke-width="4"/>
+
+  <!-- Aurora Borealis - Northern Lights (scaled up) -->
+  <!-- Green wave -->
+  <path d="M25 115 Q45 95, 70 105 Q95 115, 120 95 Q140 75, 155 95" stroke="#10B981" stroke-width="6" fill="none" opacity="0.8"/>
+
+  <!-- Blue-cyan wave -->
+  <path d="M25 105 Q45 85, 70 95 Q95 105, 120 85 Q140 65, 155 85" stroke="#06B6D4" stroke-width="6" fill="none" opacity="0.7"/>
+
+  <!-- Purple wave -->
+  <path d="M25 125 Q45 105, 70 115 Q95 125, 120 105 Q140 85, 155 105" stroke="#8B5CF6" stroke-width="6" fill="none" opacity="0.6"/>
+
+  <!-- Pink wave -->
+  <path d="M25 135 Q45 115, 70 125 Q95 135, 120 115 Q140 95, 155 115" stroke="#EC4899" stroke-width="5" fill="none" opacity="0.5"/>
+
+  <!-- Stars -->
+  <circle cx="45" cy="45" r="3" fill="#F8FAFC"/>
+  <circle cx="90" cy="35" r="4" fill="#F8FAFC"/>
+  <circle cx="135" cy="45" r="3" fill="#F8FAFC"/>
+  <circle cx="70" cy="60" r="2" fill="#F8FAFC" opacity="0.8"/>
+  <circle cx="120" cy="55" r="2" fill="#F8FAFC" opacity="0.8"/>
+  <circle cx="60" cy="40" r="1.5" fill="#F8FAFC" opacity="0.6"/>
+  <circle cx="110" cy="35" r="1.5" fill="#F8FAFC" opacity="0.6"/>
+
+  <!-- Additional subtle glow effect -->
+  <ellipse cx="90" cy="100" rx="80" ry="30" fill="url(#auroraGlow)" opacity="0.3"/>
+
+  <defs>
+    <radialGradient id="auroraGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#10B981;stop-opacity:0.4"/>
+      <stop offset="50%" style="stop-color:#06B6D4;stop-opacity:0.2"/>
+      <stop offset="100%" style="stop-color:#8B5CF6;stop-opacity:0.1"/>
+    </radialGradient>
+  </defs>
+</svg>

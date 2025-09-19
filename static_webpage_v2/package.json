@@ -1,0 +1,13 @@
+{
+  "name": "auroraboreale-website",
+  "version": "1.0.0",
+  "description": "AuroraBoreale ML Training Platform landing page",
+  "scripts": {
+    "build": "rm -rf dist && mkdir -p dist && cp -r *.html *.svg *.json images dist/ && echo 'Build completed successfully'",
+    "dev": "python -m http.server 8080",
+    "start": "python -m http.server 8080"
+  },
+  "keywords": ["ml", "training", "platform", "aurora", "boreale"],
+  "author": "AuroraBoreale Team",
+  "license": "MIT"
+}
