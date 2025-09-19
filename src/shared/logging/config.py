@@ -167,5 +167,8 @@ def configure_uvicorn_logging() -> None:
 
     for logger_name in uvicorn_loggers:
         uvicorn_logger = logging.getLogger(logger_name)
-        uvicorn_logger.setLevel(logging.WARNING)  # Reduce verbosity
+        if "access" in logger_name:
+            uvicorn_logger.setLevel(logging.INFO)  # Keep access logs at INFO level
+        else:
+            uvicorn_logger.setLevel(logging.WARNING)  # Server logs at WARNING
         uvicorn_logger.propagate = True  # Let root logger handle it

@@ -19,6 +19,7 @@ def main():
     """Main entry point for the training agent server."""
     import argparse
     import uvicorn
+    import os
 
     parser = argparse.ArgumentParser(description="Training agent server")
     parser.add_argument("--agent-id", required=False, help="Agent UUID to serve jobs for (defaults to GPU-derived)")
@@ -28,14 +29,26 @@ def main():
     parser.add_argument("--reload", action="store_true", help="Auto-reload on code changes (dev only)")
     args = parser.parse_args()
 
+    # Determine if we're running in development mode
+    is_development = os.getenv("ENVIRONMENT") == "development" or args.reload
+
+    uvicorn_config = {
+        "host": args.host,
+        "port": args.port,
+        "log_config": None,  # Disable uvicorn's default logging config
+        "access_log": True   # Keep access logging but route through our system
+    }
+
+    # Only add reload config in development mode
+    if is_development and args.reload:
+        uvicorn_config.update({
+            "reload": True,
+            "reload_dirs": ["/app/src"]
+        })
+
     uvicorn.run(
         create_app(args.agent_id, args.gpu_index),
-        host=args.host,
-        port=args.port,
-        reload=args.reload,
-        reload_dirs=["/app/src"],
-        log_config=None,  # Disable uvicorn's default logging config
-        access_log=False  # Disable access logging to prevent conflicts
+        **uvicorn_config
     )
 
 
