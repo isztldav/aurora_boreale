@@ -92,7 +92,9 @@ function AppSidebar() {
   const { collapsed } = useSidebar()
 
   const NavLink = ({ href, label, icon }: { href: string; label: string; icon: React.ReactNode }) => {
-    const isActive = pathname === href
+    const isActive = href === '/'
+      ? pathname === '/' || pathname.startsWith('/projects')
+      : pathname === href
     const linkContent = (
       <Link
         href={href}
@@ -240,7 +242,9 @@ function MobileNav() {
     icon: React.ReactNode;
     onSelect?: () => void;
   }) => {
-    const isActive = pathname === href
+    const isActive = href === '/'
+      ? pathname === '/' || pathname.startsWith('/projects')
+      : pathname === href
     return (
       <Link
         href={href}
