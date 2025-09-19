@@ -3,10 +3,16 @@ import './globals.css'
 import { QueryProvider } from '@/lib/query-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
+import { APP_METADATA } from '@/lib/app-config'
 
 export const metadata: Metadata = {
-  title: 'Unified Training Dashboard',
-  description: 'Modern UI for managing training projects and runs',
+  title: APP_METADATA.title,
+  description: APP_METADATA.description,
+  keywords: APP_METADATA.keywords,
+  icons: {
+    icon: '/icon.svg',
+    apple: '/apple-icon.svg',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

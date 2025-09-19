@@ -18,6 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { formatDateTime, shortId } from '@/lib/utils'
 import { makeRunsWS } from '@/lib/ws'
+import { NAV_LABELS } from '@/lib/app-config'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
 import { toast } from 'sonner'
 import { Alert } from '@/components/ui/alert'
@@ -90,7 +91,7 @@ export default function ProjectPage() {
   return (
     <Shell>
       <Breadcrumb className="mb-4">
-        <BreadcrumbItem><BreadcrumbLink href="/">Dashboard</BreadcrumbLink></BreadcrumbItem>
+        <BreadcrumbItem><BreadcrumbLink href="/">{NAV_LABELS.dashboard}</BreadcrumbLink></BreadcrumbItem>
         <BreadcrumbSeparator />
         <BreadcrumbItem><BreadcrumbLink href={`/projects/${projectId}`}>Project {shortId(projectId)}</BreadcrumbLink></BreadcrumbItem>
       </Breadcrumb>

@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { formatDateTime, shortId } from "@/lib/utils"
+import { NAV_LABELS } from "@/lib/app-config"
 import { RunStateBadge } from "@/components/projects/run-state-badge"
 import { apiEx } from "@/lib/api"
 
@@ -328,7 +329,7 @@ export default function TaggedRunsPage() {
         <div className="flex items-center justify-between">
           <Breadcrumb>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
+              <BreadcrumbLink href="/">{NAV_LABELS.dashboard}</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>Training Runs by Tags</BreadcrumbItem>

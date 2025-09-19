@@ -14,6 +14,7 @@ import { CommandPalette, useCommandPalette } from '@/components/command-palette'
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from '@/components/ui/sheet'
 import { LayoutDashboard, Users, Settings, Plus, Menu, Tag } from 'lucide-react'
+import { APP_NAME, NAV_LABELS, APP_CONFIG } from '@/lib/app-config'
 
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -52,7 +53,7 @@ function TopBar() {
           <SidebarTrigger className="-ml-1" />
         </div>
 
-        <span className="text-base font-medium">Dashboard</span>
+        <span className="text-base font-medium">{APP_NAME}</span>
         <div className="flex-1" />
 
         <div className="flex items-center gap-2">
@@ -132,12 +133,12 @@ function AppSidebar() {
       <SidebarHeader>
         {collapsed ? (
           <div className="flex justify-center">
-            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-primary-foreground text-sm font-bold">
-              U
+            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 via-cyan-500 to-purple-500 rounded flex items-center justify-center text-white text-sm font-bold">
+              A
             </div>
           </div>
         ) : (
-          <div className="text-sm font-semibold truncate">Unified Dashboard</div>
+          <div className="text-sm font-semibold truncate">{APP_NAME}</div>
         )}
       </SidebarHeader>
 
@@ -174,7 +175,7 @@ function AppSidebar() {
                 <SidebarMenuButton asChild>
                   <NavLink
                     href="/"
-                    label="Projects"
+                    label={NAV_LABELS.dashboard}
                     icon={<LayoutDashboard className="h-4 w-4" />}
                   />
                 </SidebarMenuButton>
@@ -183,7 +184,7 @@ function AppSidebar() {
                 <SidebarMenuButton asChild>
                   <NavLink
                     href="/agents"
-                    label="Agents"
+                    label={NAV_LABELS.agents}
                     icon={<Users className="h-4 w-4" />}
                   />
                 </SidebarMenuButton>
@@ -192,7 +193,7 @@ function AppSidebar() {
                 <SidebarMenuButton asChild>
                   <NavLink
                     href="/tags"
-                    label="Tags"
+                    label={NAV_LABELS.tags}
                     icon={<Tag className="h-4 w-4" />}
                   />
                 </SidebarMenuButton>
@@ -210,7 +211,7 @@ function AppSidebar() {
                 <SidebarMenuButton asChild>
                   <NavLink
                     href="/settings"
-                    label="Settings"
+                    label={NAV_LABELS.settings}
                     icon={<Settings className="h-4 w-4" />}
                   />
                 </SidebarMenuButton>
@@ -223,10 +224,10 @@ function AppSidebar() {
       <SidebarFooter>
         {collapsed ? (
           <div className="flex justify-center">
-            <div className="text-xs text-muted-foreground">v1</div>
+            <div className="text-xs text-muted-foreground">v{APP_CONFIG.version}</div>
           </div>
         ) : (
-          <div className="text-xs text-muted-foreground">v1</div>
+          <div className="text-xs text-muted-foreground">v{APP_CONFIG.version}</div>
         )}
       </SidebarFooter>
     </Sidebar>
@@ -287,17 +288,17 @@ function MobileNav() {
             <div className="space-y-1">
               <NavLink
                 href="/"
-                label="Projects"
+                label={NAV_LABELS.dashboard}
                 icon={<LayoutDashboard className="h-4 w-4" />}
               />
               <NavLink
                 href="/agents"
-                label="Agents"
+                label={NAV_LABELS.agents}
                 icon={<Users className="h-4 w-4" />}
               />
               <NavLink
                 href="/tags"
-                label="Tags"
+                label={NAV_LABELS.tags}
                 icon={<Tag className="h-4 w-4" />}
               />
             </div>
@@ -309,7 +310,7 @@ function MobileNav() {
             <div className="space-y-1">
               <NavLink
                 href="/settings"
-                label="Settings"
+                label={NAV_LABELS.settings}
                 icon={<Settings className="h-4 w-4" />}
               />
             </div>

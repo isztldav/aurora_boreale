@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator"
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { formatDateTime, shortId } from "@/lib/utils"
+import { NAV_LABELS } from "@/lib/app-config"
 import { RunStateBadge } from "@/components/projects/run-state-badge"
 import { apiEx } from "@/lib/api"
 
@@ -343,7 +344,7 @@ export default function ProjectTagsPage() {
         {/* Breadcrumb */}
         <Breadcrumb>
           <BreadcrumbItem>
-            <BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
+            <BreadcrumbLink href="/">{NAV_LABELS.dashboard}</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>

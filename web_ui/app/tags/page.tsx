@@ -12,6 +12,7 @@ import { TagTreeManager, TagNode } from "@/components/tags/tag-tree-manager"
 import { Tag, BarChart3, Settings, TrendingUp } from "lucide-react"
 import { toast } from "sonner"
 import { api, apiEx } from "@/lib/api"
+import { NAV_LABELS } from "@/lib/app-config"
 
 // API functions using the real API client
 const fetchTags = async (): Promise<TagNode[]> => {
@@ -225,7 +226,7 @@ export default function TagsPage() {
         <div className="flex items-center justify-between">
           <Breadcrumb>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
+              <BreadcrumbLink href="/">{NAV_LABELS.dashboard}</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>Tags</BreadcrumbItem>
