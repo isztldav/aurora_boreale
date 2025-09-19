@@ -24,8 +24,9 @@ export function QueueRunDialog({ projectId, configId }: QueueRunDialogProps) {
   const [agentId, setAgentId] = useState<string | undefined>(undefined)
   const { data: gpus = [] } = useQuery({ queryKey: ['gpus', { agentId }], queryFn: () => agentId ? apiEx.agents.gpus(agentId) : Promise.resolve([]), enabled: !!agentId })
   const [gpuSel, setGpuSel] = useState<Record<number, boolean>>({})
-  const [docker, setDocker] = useState<string>('')
-  const [priority, setPriority] = useState<number>(0)
+  // Docker and priority features are coming soon
+  // const [docker, setDocker] = useState<string>('')
+  // const [priority, setPriority] = useState<number>(0)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
 
   // Fetch available tags for this project only
@@ -42,9 +43,8 @@ export function QueueRunDialog({ projectId, configId }: QueueRunDialogProps) {
       // Queue the run
       const runResult = await apiEx.configs.queueRun(configId, {
         agent_id: agentId,
-        gpu_indices: selected,
-        docker_image: docker || undefined,
-        priority
+        gpu_indices: selected
+        // docker_image and priority features coming soon
       })
 
       // Assign tags to the created run if any were selected
@@ -97,13 +97,24 @@ export function QueueRunDialog({ projectId, configId }: QueueRunDialogProps) {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Docker Image (optional)</Label>
-              <Input value={docker} onChange={(e) => setDocker(e.target.value)} placeholder="e.g. nvidia/cuda:12.1-runtime" />
+            <div className="opacity-50">
+              <Label className="text-muted-foreground">Docker Image (coming soon)</Label>
+              <Input
+                value=""
+                placeholder="e.g. nvidia/cuda:12.1-runtime"
+                disabled
+                className="bg-muted cursor-not-allowed"
+              />
             </div>
-            <div>
-              <Label>Priority</Label>
-              <Input type="number" value={priority} onChange={(e) => setPriority(Number(e.target.value))} />
+            <div className="opacity-50">
+              <Label className="text-muted-foreground">Priority (coming soon)</Label>
+              <Input
+                type="number"
+                value=""
+                placeholder="0"
+                disabled
+                className="bg-muted cursor-not-allowed"
+              />
             </div>
           </div>
           <div>
